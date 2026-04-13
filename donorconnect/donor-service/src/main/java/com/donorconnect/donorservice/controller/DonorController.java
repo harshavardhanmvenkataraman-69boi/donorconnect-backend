@@ -26,14 +26,14 @@ public class DonorController {
 //    private final DonationService donationService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ADMIN')")
     @Operation(summary = "Register new donor")
     public ResponseEntity<ApiResponse<?>> create(@RequestBody DonorRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Donor registered", donorService.create(request)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ADMIN')")
     @Operation(summary = "Get all donors (paginated)")
     public ResponseEntity<ApiResponse<?>> getAll(
             @ParameterObject @PageableDefault(size = 20, sort = "donorId") Pageable pageable) {
