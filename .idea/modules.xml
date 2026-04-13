@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/donorconnect-backend.iml" filepath="$PROJECT_DIR$/.idea/donorconnect-backend.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/donorconnectFull.iml" filepath="$PROJECT_DIR$/.idea/donorconnectFull.iml" />
     </modules>
   </component>
 </project>
