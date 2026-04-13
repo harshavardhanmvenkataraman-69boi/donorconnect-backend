@@ -19,28 +19,28 @@ public class ScreeningController {
     private final ScreeningService screeningService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Create screening record")
     public ResponseEntity<ApiResponse<?>> create(@RequestBody ScreeningRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Screening created", screeningService.create(request)));
     }
 
     @GetMapping("/{screeningId}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Get screening by ID")
     public ResponseEntity<ApiResponse<?>> getById(@PathVariable Long screeningId) {
         return ResponseEntity.ok(ApiResponse.success(screeningService.getById(screeningId)));
     }
 
     @GetMapping("/donor/{donorId}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "All screenings for a donor")
     public ResponseEntity<ApiResponse<?>> getByDonor(@PathVariable Long donorId) {
         return ResponseEntity.ok(ApiResponse.success(screeningService.getByDonor(donorId)));
     }
 
     @PutMapping("/{screeningId}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Update screening record")
     public ResponseEntity<ApiResponse<?>> update(@PathVariable Long screeningId,
                                                  @RequestBody ScreeningRequest request) {

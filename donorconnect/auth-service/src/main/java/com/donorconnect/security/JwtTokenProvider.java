@@ -34,14 +34,18 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtExpiration);
 
+        // Embed the first granted authority (e.g. ROLE_ADMIN) as a "role" claim
+        // so downstream micro-services can read it without calling auth-service.
+        String role = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority())
+                .orElse("");
+
         return Jwts.builder()
                 .setSubject(username)
+                .claim("role", role)
                 .setIssuedAt(now)
                 .setExpiration(expiry)
-                // The Secret Key (getSigningKey()): This is your private "stamp" that
-                // only your server knows
-                //The Algorithm (HS256): This is the mathematical formula used to mix
-                // the data and the key together.
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

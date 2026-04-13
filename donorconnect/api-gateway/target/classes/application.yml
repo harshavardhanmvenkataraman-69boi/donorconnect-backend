@@ -11,68 +11,115 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
+        # ----------------------------------------------------------------
+        # auth-service  →  port 8097  →  /api/v1/auth/**
+        # Client calls:  POST /api/auth/login
+        # Service sees:  POST /api/v1/auth/login
+        # ----------------------------------------------------------------
         - id: auth-service
           uri: lb://auth-service
           predicates:
             - Path=/api/auth/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/auth/(?<segment>.*), /api/v1/auth/${segment}
 
-        - id: donor-service
+        # ----------------------------------------------------------------
+        # donor-service  →  port 8002  →  /api/v1/donors/**
+        #                                  /api/v1/screenings/**
+        #                                  /api/v1/deferrals/**
+        # Client calls:  GET  /api/donors/1
+        # Service sees:  GET  /api/v1/donors/1
+        # ----------------------------------------------------------------
+        - id: donor-service-donors
           uri: lb://donor-service
           predicates:
             - Path=/api/donors/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/donors/(?<segment>.*), /api/v1/donors/${segment}
 
+        - id: donor-service-screenings
+          uri: lb://donor-service
+          predicates:
+            - Path=/api/screenings/**
+          filters:
+            - RewritePath=/api/screenings/(?<segment>.*), /api/v1/screenings/${segment}
+
+        - id: donor-service-deferrals
+          uri: lb://donor-service
+          predicates:
+            - Path=/api/deferrals/**
+          filters:
+            - RewritePath=/api/deferrals/(?<segment>.*), /api/v1/deferrals/${segment}
+
+        # ----------------------------------------------------------------
+        # blood-supply-service
+        # ----------------------------------------------------------------
         - id: blood-supply-service
           uri: lb://blood-supply-service
           predicates:
             - Path=/api/blood/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/blood/(?<segment>.*), /api/v1/blood/${segment}
 
+        # ----------------------------------------------------------------
+        # transfusion-service
+        # ----------------------------------------------------------------
         - id: transfusion-service
           uri: lb://transfusion-service
           predicates:
             - Path=/api/transfusion/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/transfusion/(?<segment>.*), /api/v1/transfusion/${segment}
 
+        # ----------------------------------------------------------------
+        # safety-service
+        # ----------------------------------------------------------------
         - id: safety-service
           uri: lb://safety-service
           predicates:
             - Path=/api/safety/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/safety/(?<segment>.*), /api/v1/safety/${segment}
 
+        # ----------------------------------------------------------------
+        # billing-service
+        # ----------------------------------------------------------------
         - id: billing-service
           uri: lb://billing-service
           predicates:
             - Path=/api/billing/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/billing/(?<segment>.*), /api/v1/billing/${segment}
 
+        # ----------------------------------------------------------------
+        # reporting-service
+        # ----------------------------------------------------------------
         - id: reporting-service
           uri: lb://reporting-service
           predicates:
             - Path=/api/reports/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/reports/(?<segment>.*), /api/v1/reports/${segment}
 
+        # ----------------------------------------------------------------
+        # notification-service
+        # ----------------------------------------------------------------
         - id: notification-service
           uri: lb://notification-service
           predicates:
             - Path=/api/notifications/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/notifications/(?<segment>.*), /api/v1/notifications/${segment}
 
+        # ----------------------------------------------------------------
+        # config-service
+        # ----------------------------------------------------------------
         - id: config-service
           uri: lb://config-service
           predicates:
             - Path=/api/config/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/config/(?<segment>.*), /api/v1/config/${segment}
 
 eureka:
   client:
