@@ -8,3 +8,4 @@ import java.util.List;
 public interface ScreeningRecordRepository extends JpaRepository<ScreeningRecord, Long> {
     List<ScreeningRecord> findByDonorId(Long donorId);
 }
+
