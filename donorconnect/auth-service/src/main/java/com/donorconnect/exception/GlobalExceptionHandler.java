@@ -1,7 +1,6 @@
-package com.donorconnect.config;
+package com.donorconnect.exception;
 
 import com.donorconnect.dto.response.ApiResponse;
-import com.donorconnect.exception.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -25,12 +24,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-// 409 CONFLICT
-    @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<ApiResponse<?>> handleDuplicate(DuplicateResourceException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ex.getMessage()));
-    }
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<?>> handleUserExists(UserAlreadyExistsException ex) {
@@ -38,29 +31,10 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-// 400 BAD REQUEST
-    @ExceptionHandler(InvalidOperationException.class)
-    public ResponseEntity<ApiResponse<?>> handleInvalidOperation(InvalidOperationException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage()));
-    }
 
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<ApiResponse<?>> handleInvalidPassword(InvalidPasswordException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage()));
-    }
-
-    @ExceptionHandler(PermanentDeferralException.class)
-    public ResponseEntity<ApiResponse<?>> handlePermanentDeferral(PermanentDeferralException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage()));
-    }
-
-// 422 UNPROCESSABLE ENTITY
-    @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<ApiResponse<?>> handleInsufficientStock(InsufficientStockException ex) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
