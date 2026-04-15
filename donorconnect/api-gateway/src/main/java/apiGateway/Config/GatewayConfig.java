@@ -40,9 +40,9 @@ public class GatewayConfig {
 
                 // --- 2. DONOR SERVICE ---
                 .route("donor-service", r -> r
-                        .path("/api/donors/**", "/api/screenings/**", "/api/deferrals/**")
+                        .path("/api/donors/**", "/api/screenings/**", "/api/deferrals/**", "/api/drives/**", "/api/appointments/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/(?<service>donors|screenings|deferrals)/(?<segment>.*)", "/api/v1/${service}/${segment}"))
+                                .rewritePath("/api/(?<service>donors|screenings|deferrals|drives|appointments)(?<remaining>/?.*)", "/api/v1/${service}${remaining}"))
                         .uri("lb://donor-service"))
 
 
