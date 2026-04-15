@@ -1,0 +1,57 @@
+Set-Content -Path "C:\auth-service\.gitignore" -Value @"
+# General OS-specific files
+.DS_Store
+Thumbs.db
+
+# IntelliJ IDEA project files
+*.iml
+.idea/
+*.ipr
+*.iws
+
+# Maven build files
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+release.properties
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Compiled class files
+*.class
+
+# Generated sources
+generated-sources/
+generated-test-sources/
+
+# Eclipse project files
+.project
+.classpath
+.settings/
+
+# Windows-specific files
+desktop.ini
+$RECYCLE.BIN/
+
+# Spring Boot specific
+*.war
+*.jar
+
+# Node.js (if applicable in any subproject)
+node_modules/
+
+# Docker
+*.env
+.env.local
+.env.*.local
+docker-compose.override.yml
+"@ -Append
