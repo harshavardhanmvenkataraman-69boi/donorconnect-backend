@@ -4,10 +4,11 @@ Set-Content -Path "C:\auth-service\.gitignore" -Value @"
 Thumbs.db
 
 # IntelliJ IDEA project files
-*.iml
-.idea/
-*.ipr
+.idea
+.idea/modules.xml
 *.iws
+*.iml
+*.ipr
 
 # Maven build files
 target/
