@@ -132,13 +132,13 @@ public class GatewayConfig {
                 // --- 1. AUTH SERVICE (IAM) ---
                 // Public endpoints
                 .route("auth-public", r -> r
-                        .path("/api/auth/setup-admin", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password")
+                        .path("/api/v1/auth/setup-admin", "/api/v1/auth/login", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password")
                         .filters(f -> f.rewritePath("/api/auth/(?<segment>.*)", "/api/v1/auth/${segment}"))
                         .uri("lb://auth-service"))
 
                 // Protected endpoints
                 .route("auth-protected", r -> r
-                        .path("/api/auth/register", "/api/auth/change-password", "/api/auth/logout")
+                        .path("/api/v1/auth/register", "/api/v1/auth/change-password", "/api/v1/auth/logout")
                         .filters(f -> f.rewritePath("/api/auth/(?<segment>.*)", "/api/v1/auth/${segment}")
                                 .filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config())))
                         .uri("lb://auth-service"))
@@ -152,7 +152,7 @@ public class GatewayConfig {
 
                 // --- 2. DONOR SERVICE ---
                 .route("donor-service", r -> r
-                        .path("/api/donors/**", "/api/screenings/**", "/api/deferrals/**")
+                        .path("/api/v1/donors/**", "/api/v1/screenings/**", "/api/v1/deferrals/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
                                 .rewritePath("/api/(?<service>donors|screenings|deferrals)/(?<segment>.*)", "/api/v1/${service}/${segment}"))
                         .uri("lb://donor-service"))
