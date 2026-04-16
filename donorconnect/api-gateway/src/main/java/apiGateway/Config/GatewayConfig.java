@@ -48,9 +48,9 @@ public class GatewayConfig {
 
                 // --- 3. BLOOD SUPPLY SERVICE ---
                 .route("blood-supply-service", r -> r
-                        .path("/api/blood/**")
+                        .path("/api/donations/**", "/api/components/**", "/api/recalls/**", "/api/quarantine/**", "/api/disposal/**", "/api/test-results/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/blood/(?<segment>.*)", "/api/v1/blood/${segment}"))
+                                .rewritePath("/api/(?<service>donations|components|recalls|quarantine|disposal|test-results)(?<remaining>/?.*)", "/api/v1/${service}${remaining}"))
                         .uri("lb://blood-supply-service"))
 
 
