@@ -1,0 +1,13 @@
+target/
+*.class
+*.jar
+*.log
+logs/
+.idea/
+*.iml
+node_modules/
+.env
+application-secret.properties
+.vscode
+.DS_Store
+.idea
