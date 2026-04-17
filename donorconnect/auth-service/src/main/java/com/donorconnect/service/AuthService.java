@@ -5,8 +5,8 @@ import com.donorconnect.entity.auth.AuditLog;
 import com.donorconnect.entity.auth.User;
 import com.donorconnect.enums.Enums.*;
 import com.donorconnect.exception.*; // Imports all your custom exceptions
-import com.donorconnect.repositroy.AuditLogRepository;
-import com.donorconnect.repositroy.UserRepository;
+import com.donorconnect.repository.AuditLogRepository;
+import com.donorconnect.repository.UserRepository;
 import com.donorconnect.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
