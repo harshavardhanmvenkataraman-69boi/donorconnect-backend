@@ -48,9 +48,9 @@ public class GatewayConfig {
 
                 // --- 3. BLOOD SUPPLY SERVICE ---
                 .route("blood-supply-service", r -> r
-                        .path("/api/blood/**")
+                        .path("/api/donations/**", "/api/components/**", "/api/recalls/**", "/api/quarantine/**", "/api/disposal/**", "/api/test-results/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/blood/(?<segment>.*)", "/api/v1/blood/${segment}"))
+                                .rewritePath("/api/(?<service>donations|components|recalls|quarantine|disposal|test-results)(?<remaining>/?.*)", "/api/v1/${service}${remaining}"))
                         .uri("lb://blood-supply-service"))
 
 
@@ -62,7 +62,15 @@ public class GatewayConfig {
                         .uri("lb://transfusion-service"))
 
 
-                // --- 5. SAFETY, BILLING & REPORTING ---
+                // --- 5. INVENTORY SERVICE ---
+                .route("inventory-service", r -> r
+                        .path("/api/inventory/**", "/api/stock-transactions/**", "/api/expiry-watch/**")
+                        .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
+                                .rewritePath("/api/(?<service>inventory|stock-transactions|expiry-watch)(?<remaining>/?.*)", "/api/v1/${service}${remaining}"))
+                        .uri("lb://inventory-service"))
+
+
+                // --- 6. SAFETY, BILLING & REPORTING ---
                 .route("safety-service", r -> r
                         .path("/api/safety/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
@@ -82,7 +90,7 @@ public class GatewayConfig {
                         .uri("lb://reporting-service"))
 
 
-                // --- 6. UTILITY SERVICES ---
+                // --- 7. UTILITY SERVICES ---
                 .route("notification-service", r -> r
                         .path("/api/notifications/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
@@ -95,7 +103,7 @@ public class GatewayConfig {
                                 .rewritePath("/api/config/(?<segment>.*)", "/api/v1/config/${segment}"))
                         .uri("lb://config-service"))
 
-                // --- 7. SWAGGER / OPENAPI (PUBLIC) ---
+                // --- 8. SWAGGER / OPENAPI (PUBLIC) ---
                 .route("openapi-docs", r -> r
                         .path("/v3/api-docs/**", "/swagger-ui/**", "/swagger-resources/**")
                         .uri("lb://auth-service"))
