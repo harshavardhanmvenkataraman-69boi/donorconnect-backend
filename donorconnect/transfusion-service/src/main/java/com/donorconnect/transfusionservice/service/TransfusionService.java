@@ -7,16 +7,14 @@ import com.donorconnect.transfusionservice.entity.*;
 import com.donorconnect.transfusionservice.enums.*;
 import com.donorconnect.transfusionservice.exception.ResourceNotFoundException;
 import com.donorconnect.transfusionservice.feign.BloodSupplyFeignClient;
-import com.donorconnect.transfusionservice.kafka.*;
 import com.donorconnect.transfusionservice.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +23,7 @@ public class TransfusionService {
     private final CrossmatchRequestRepository crossmatchRequestRepository;
     private final CrossmatchResultRepository crossmatchResultRepository;
     private final IssueRecordRepository issueRecordRepository;
+    private final BloodSupplyFeignClient bloodSupplyFeignClient;
 
     // --- CROSSMATCH REQUESTS ---
 
@@ -68,6 +67,14 @@ public class TransfusionService {
     // --- CROSSMATCH RESULTS ---
 
     public CrossmatchResult createResult(CrossmatchResultRequest req) {
+        // Synchronous safety check: crossmatch is allowed only when the unit is still AVAILABLE.
+        Map<String, Object> componentResponse = bloodSupplyFeignClient.getComponentById(req.getComponentId());
+        String status = extractComponentStatus(componentResponse);
+
+        if (!"AVAILABLE".equalsIgnoreCase(status)) {
+            throw new IllegalStateException("Component not available for crossmatch. Status: " + status);
+        }
+
         CrossmatchResult r = CrossmatchResult.builder()
                 .requestId(req.getRequestId())
                 .componentId(req.getComponentId())
@@ -79,11 +86,13 @@ public class TransfusionService {
                 .build();
         CrossmatchResult saved = crossmatchResultRepository.save(r);
 
-        // auto-update request status
-        CrossmatchRequest request = getRequestById(req.getRequestId());
+        // If compatible, reserve the unit immediately to prevent parallel allocation.
         if (req.getCompatibility() == Compatibility.COMPATIBLE) {
+            CrossmatchRequest request = getRequestById(req.getRequestId());
             request.setStatus(CrossmatchStatus.MATCHED);
             crossmatchRequestRepository.save(request);
+
+            bloodSupplyFeignClient.updateComponentStatus(req.getComponentId(), "RESERVED");
         }
         return saved;
     }
@@ -108,7 +117,10 @@ public class TransfusionService {
                 .indication(req.getIndication())
                 .status(IssueStatus.ISSUED)
                 .build();
-        return issueRecordRepository.save(r);
+        IssueRecord saved = issueRecordRepository.save(r);
+
+        bloodSupplyFeignClient.updateComponentStatus(req.getComponentId(), "ISSUED");
+        return saved;
     }
 
     public Page<IssueRecord> getAllIssues(Pageable pageable) {
@@ -133,5 +145,22 @@ public class TransfusionService {
         r.setStatus(IssueStatus.RETURNED);
         return issueRecordRepository.save(r);
     }
-}
 
+    @SuppressWarnings("unchecked")
+    private String extractComponentStatus(Map<String, Object> response) {
+        Object directStatus = response.get("status");
+        if (directStatus != null) {
+            return String.valueOf(directStatus);
+        }
+
+        Object data = response.get("data");
+        if (data instanceof Map<?, ?> dataMap) {
+            Object nestedStatus = ((Map<String, Object>) dataMap).get("status");
+            if (nestedStatus != null) {
+                return String.valueOf(nestedStatus);
+            }
+        }
+
+        throw new IllegalStateException("Unable to read component status from blood-supply response");
+    }
+}
