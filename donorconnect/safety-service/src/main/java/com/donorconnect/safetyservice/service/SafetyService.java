@@ -1,43 +1,97 @@
 package com.donorconnect.safetyservice.service;
 
-import com.donorconnect.safetyservice.entity.*;
+import com.donorconnect.safetyservice.dto.request.LookbackRequest;
+import com.donorconnect.safetyservice.dto.request.ReactionRequest;
+import com.donorconnect.safetyservice.entity.LookbackTrace;
+import com.donorconnect.safetyservice.entity.Reaction;
 import com.donorconnect.safetyservice.enums.ReactionStatus;
-import com.donorconnect.safetyservice.kafka.SafetyKafkaProducer;
-import com.donorconnect.safetyservice.repository.*;
+import com.donorconnect.safetyservice.enums.Severity;
+import com.donorconnect.safetyservice.exception.ResourceNotFoundException;
+import com.donorconnect.safetyservice.repository.LookbackTraceRepository;
+import com.donorconnect.safetyservice.repository.ReactionRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
-@Service @RequiredArgsConstructor @Slf4j
+@Service
+@RequiredArgsConstructor
 public class SafetyService {
-    private final ReactionRepository reactionRepo;
-    private final LookbackTraceRepository lookbackRepo;
-    private final SafetyKafkaProducer kafkaProducer;
 
-    public List<Reaction> getAllReactions() { return reactionRepo.findAll(); }
-    public List<Reaction> getReactionsByPatient(Long patientId) { return reactionRepo.findByPatientId(patientId); }
+    private final ReactionRepository reactionRepository;
+    private final LookbackTraceRepository lookbackTraceRepository;
 
-    @Transactional
-    public Reaction logReaction(Reaction reaction) {
-        Reaction saved = reactionRepo.save(reaction);
-        kafkaProducer.publishSafetyAlert(Map.of(
-            "reactionId", saved.getReactionId(),
-            "patientId", saved.getPatientId(),
-            "severity", saved.getSeverity().name()
-        ));
-        return saved;
+    // --- REACTIONS ---
+
+    public Reaction create(ReactionRequest req) {
+        Reaction r = Reaction.builder()
+                .issueId(req.getIssueId())
+                .patientId(req.getPatientId())
+                .reactionType(req.getReactionType())
+                .severity(req.getSeverity())
+                .reactionDate(req.getReactionDate() != null ? req.getReactionDate() : LocalDate.now())
+                .notes(req.getNotes())
+                .status(ReactionStatus.PENDING)
+                .build();
+        return reactionRepository.save(r);
     }
 
-    @Transactional
-    public Reaction updateReactionStatus(Long id, ReactionStatus status) {
-        Reaction r = reactionRepo.findById(id).orElseThrow();
+    public Page<Reaction> getAll(Pageable pageable) {
+        return reactionRepository.findAll(pageable);
+    }
+
+    public Reaction getById(Long id) {
+        return reactionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reaction", id));
+    }
+
+    public List<Reaction> getReactionsByPatient(Long patientId) {
+        return reactionRepository.findByPatientId(patientId);
+    }
+
+    public List<Reaction> getBySeverity(Severity severity) {
+        return reactionRepository.findBySeverity(severity);
+    }
+
+    public Reaction update(Long id, ReactionRequest req) {
+        Reaction r = getById(id);
+        if (req.getReactionType() != null) r.setReactionType(req.getReactionType());
+        if (req.getSeverity() != null) r.setSeverity(req.getSeverity());
+        if (req.getNotes() != null) r.setNotes(req.getNotes());
+        return reactionRepository.save(r);
+    }
+
+    public Reaction updateStatus(Long id, ReactionStatus status) {
+        Reaction r = getById(id);
         r.setStatus(status);
-        return reactionRepo.save(r);
+        return reactionRepository.save(r);
     }
 
-    public List<LookbackTrace> getTracesByDonation(Long donationId) { return lookbackRepo.findByDonationId(donationId); }
-    public LookbackTrace saveTrace(LookbackTrace trace) { return lookbackRepo.save(trace); }
+    // --- LOOKBACK ---
+
+    public LookbackTrace createTrace(LookbackRequest req) {
+        LookbackTrace t = LookbackTrace.builder()
+                .donationId(req.getDonationId())
+                .componentId(req.getComponentId())
+                .patientId(req.getPatientId())
+                .traceDate(LocalDate.now())
+                .status("ACTIVE")
+                .build();
+        return lookbackTraceRepository.save(t);
+    }
+
+    public List<LookbackTrace> getByDonation(Long donationId) {
+        return lookbackTraceRepository.findByDonationId(donationId);
+    }
+
+    public List<LookbackTrace> getLookbackByPatient(Long patientId) {
+        return lookbackTraceRepository.findByPatientId(patientId);
+    }
+
+    public List<LookbackTrace> getByComponent(Long componentId) {
+        return lookbackTraceRepository.findByComponentId(componentId);
+    }
 }
