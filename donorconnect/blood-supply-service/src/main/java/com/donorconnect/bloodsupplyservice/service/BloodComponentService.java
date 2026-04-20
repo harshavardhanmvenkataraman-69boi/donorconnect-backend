@@ -43,11 +43,6 @@ public class BloodComponentService {
                 .orElseThrow(() -> new ResourceNotFoundException("BloodComponent", id));
     }
 
-    public List<BloodComponent> getAvailable() {
-        return bloodComponentRepository.findByStatus(ComponentStatus.AVAILABLE);
-    }
-
-
     public List<BloodComponent> getByDonation(Long donationId) {
         return bloodComponentRepository.findByDonationId(donationId);
     }

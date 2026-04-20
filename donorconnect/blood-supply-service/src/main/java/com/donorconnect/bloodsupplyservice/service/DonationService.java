@@ -2,9 +2,11 @@ package com.donorconnect.bloodsupplyservice.service;
 
 
 import com.donorconnect.bloodsupplyservice.dto.request.DonationRequest;
+import com.donorconnect.bloodsupplyservice.dto.AppointmentDto;
 import com.donorconnect.bloodsupplyservice.entity.Donation;
 import com.donorconnect.bloodsupplyservice.enums.CollectionStatus;
 import com.donorconnect.bloodsupplyservice.feign.DonorFeignClient;
+import com.donorconnect.bloodsupplyservice.feign.AppointmentFeignClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +16,7 @@ import feign.FeignException;
 import java.time.LocalDate;
 import java.util.List;
 import com.donorconnect.bloodsupplyservice.Exception.ResourceNotFoundException;
+import com.donorconnect.bloodsupplyservice.Exception.DonationDateValidationException;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class DonationService {
 
     private final DonationRepository donationRepository;
     private final DonorFeignClient donorFeignClient;
+    private final AppointmentFeignClient appointmentFeignClient;
 
     public Donation create(DonationRequest req) {
         // Validate that the donor exists in donor-service
@@ -34,6 +38,24 @@ public class DonationService {
             throw new RuntimeException("Authentication failed: invalid or missing JWT token");
         } catch (Exception e) {
             throw new RuntimeException("Failed to validate donor: " + e.getMessage());
+        }
+
+        // Validate appointment date
+        LocalDate collectionDate = req.getCollectionDate() != null ? req.getCollectionDate() : LocalDate.now();
+        try {
+            var appointmentResponse = appointmentFeignClient.getAppointmentsByDonor(req.getDonorId());
+            List<AppointmentDto> appointments = appointmentResponse.getData();
+            boolean hasValidAppointment = appointments.stream()
+                    .anyMatch(appointment -> collectionDate.isAfter(appointment.getDateTime().toLocalDate()));
+            if (!hasValidAppointment) {
+                throw new DonationDateValidationException("Donation date must be after the appointment date");
+            }
+        } catch (FeignException.Forbidden e) {
+            throw new RuntimeException("Access denied: insufficient permissions to access appointment service");
+        } catch (FeignException.Unauthorized e) {
+            throw new RuntimeException("Authentication failed: invalid or missing JWT token");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to validate appointment: " + e.getMessage());
         }
 
         Donation d = Donation.builder()
