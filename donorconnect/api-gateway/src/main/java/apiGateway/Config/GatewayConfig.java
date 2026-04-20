@@ -58,7 +58,7 @@ public class GatewayConfig {
                 .route("transfusion-service", r -> r
                         .path("/api/transfusion/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/transfusion/(?<segment>.*)", "/transfusion/api/v1/${segment}"))
+                                .rewritePath("/api/transfusion/(?<segment>.*)", "/api/v1/transfusion/${segment}"))
                         .uri("lb://transfusion-service"))
 
 
@@ -103,10 +103,52 @@ public class GatewayConfig {
                                 .rewritePath("/api/config/(?<segment>.*)", "/api/v1/config/${segment}"))
                         .uri("lb://config-service"))
 
-                // --- 8. SWAGGER / OPENAPI (PUBLIC) ---
-                .route("openapi-docs", r -> r
-                        .path("/v3/api-docs/**", "/swagger-ui/**", "/swagger-resources/**")
+                // --- 8. SWAGGER / OPENAPI (PUBLIC — per service api-docs aggregation) ---
+                .route("api-docs-auth", r -> r
+                        .path("/v1/api-docs/auth-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/auth-service", "/v1/api-docs"))
                         .uri("lb://auth-service"))
+
+                .route("api-docs-donor", r -> r
+                        .path("/v1/api-docs/donor-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/donor-service", "/v1/api-docs"))
+                        .uri("lb://donor-service"))
+
+                .route("api-docs-blood-supply", r -> r
+                        .path("/v1/api-docs/blood-supply-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/blood-supply-service", "/v1/api-docs"))
+                        .uri("lb://blood-supply-service"))
+
+                .route("api-docs-transfusion", r -> r
+                        .path("/v1/api-docs/transfusion-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/transfusion-service", "/v1/api-docs"))
+                        .uri("lb://transfusion-service"))
+
+                .route("api-docs-inventory", r -> r
+                        .path("/v1/api-docs/inventory-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/inventory-service", "/v1/api-docs"))
+                        .uri("lb://inventory-service"))
+
+                .route("api-docs-safety", r -> r
+                        .path("/v1/api-docs/safety-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/safety-service", "/v1/api-docs"))
+                        .uri("lb://safety-service"))
+
+                .route("api-docs-billing", r -> r
+                        .path("/v1/api-docs/billing-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/billing-service", "/v1/api-docs"))
+                        .uri("lb://billing-service"))
+
+                .route("api-docs-reporting", r -> r
+                        .path("/v1/api-docs/reporting-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/reporting-service", "/v1/api-docs"))
+                        .uri("lb://reporting-service"))
+
+                .route("api-docs-notification", r -> r
+                        .path("/v1/api-docs/notification-service")
+                        .filters(f -> f.rewritePath("/v1/api-docs/notification-service", "/v1/api-docs"))
+                        .uri("lb://notification-service"))
+
 
                 .build();
     }
