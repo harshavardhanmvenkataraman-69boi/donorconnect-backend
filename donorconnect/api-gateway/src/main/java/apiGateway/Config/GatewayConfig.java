@@ -58,7 +58,7 @@ public class GatewayConfig {
                 .route("transfusion-service", r -> r
                         .path("/api/transfusion/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/transfusion/(?<segment>.*)", "/api/v1/transfusion/${segment}"))
+                                .rewritePath("/api/transfusion/(?<segment>.*)", "/transfusion/api/v1/${segment}"))
                         .uri("lb://transfusion-service"))
 
 
