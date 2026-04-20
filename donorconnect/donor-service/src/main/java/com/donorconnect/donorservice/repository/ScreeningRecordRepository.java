@@ -7,4 +7,6 @@ import java.util.List;
 @Repository
 public interface ScreeningRecordRepository extends JpaRepository<ScreeningRecord, Long> {
     List<ScreeningRecord> findByDonorId(Long donorId);
+    boolean existsByDonorIdAndClearedFlagTrue(Long donorId);
 }
+
