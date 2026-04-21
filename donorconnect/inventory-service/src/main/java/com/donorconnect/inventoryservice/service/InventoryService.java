@@ -53,7 +53,6 @@ public class InventoryService {
                 .componentType(request.getComponentType())
                 .expiryDate(request.getExpiryDate())
                 .bagNumber(request.getBagNumber())
-                .locationId(request.getLocationId())
                 .quantity(1)
                 .status(InventoryStatus.AVAILABLE)
                 .build();
@@ -102,13 +101,26 @@ public class InventoryService {
             case ISSUED -> TransactionType.ISSUE;
             case QUARANTINED -> TransactionType.QUARANTINE;
             case AVAILABLE -> TransactionType.RELEASE;
+            case RESERVED -> TransactionType.ADJUST;
             case DISPOSED -> TransactionType.ADJUST;
             default -> TransactionType.ADJUST;
         };
+
         recordTransaction(componentId, balance.getLocationId(), txnType, 1, null, request.getReason());
 
         log.info("InventoryBalance status updated for componentId={}: {} → {}", componentId, prev, request.getStatus());
         return toBalanceResponse(saved);
+    }
+
+    public List<InventoryBalanceResponse> getAvailableUnits(String bloodGroup, String rhFactor, String componentType) {
+        return balanceRepo.findByBloodGroupAndRhFactorAndComponentTypeAndStatus(
+                        BloodGroup.valueOf(bloodGroup.toUpperCase()),
+                        RhFactor.valueOf(rhFactor.toUpperCase()),
+                        ComponentType.valueOf(componentType.toUpperCase()),
+                        InventoryStatus.AVAILABLE)
+                .stream()
+                .map(this::toBalanceResponse)
+                .collect(Collectors.toList());
     }
 
     public List<InventoryBalanceResponse> getAll() {
@@ -119,7 +131,14 @@ public class InventoryService {
         BloodGroup bg = BloodGroup.valueOf(bloodGroup.toUpperCase());
         return balanceRepo.findByBloodGroup(bg).stream().map(this::toBalanceResponse).collect(Collectors.toList());
     }
-
+    
+    public InventoryBalanceResponse getByComponentId(Long componentId) {
+        InventoryBalance ib = balanceRepo.findByComponentId(componentId)
+                .orElseThrow(() -> new ResourceNotFoundException("InventoryBalance not found for componentId=" + componentId));
+        
+        return toBalanceResponse(ib);            
+    }
+    
     public List<InventoryBalanceResponse> getLowStock() {
         return balanceRepo.findLowStock(lowStockThreshold).stream()
                 .map(this::toBalanceResponse).collect(Collectors.toList());

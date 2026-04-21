@@ -33,6 +33,7 @@ public class InventoryController {
      * Not exposed to external clients directly.
      */
     @PostMapping("/api/v1/inventory/entry")
+    @PreAuthorize("hasAnyRole('ROLE_INVENTORY_CONTROLLER', 'ROLE_ADMIN', 'ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "Create inventory entry (called by blood-supply-service via Feign)")
     public ResponseEntity<ApiResponse<InventoryBalanceResponse>> createEntry(
             @Valid @RequestBody InventoryEntryRequest request) {
@@ -43,6 +44,7 @@ public class InventoryController {
      * Called by blood-supply-service via Feign when Component status changes.
      */
     @PatchMapping("/api/v1/inventory/{componentId}/status")
+    @PreAuthorize("hasAnyRole('ROLE_INVENTORY_CONTROLLER', 'ROLE_ADMIN', 'ROLE_TRANSFUSION_OFFICER')") 
     @Operation(summary = "Update inventory status (called by blood-supply-service via Feign)")
     public ResponseEntity<ApiResponse<InventoryBalanceResponse>> updateStatus(
             @PathVariable Long componentId,
@@ -57,12 +59,27 @@ public class InventoryController {
         return ResponseEntity.ok(ApiResponse.success(inventoryService.getAll()));
     }
 
+    @GetMapping("/api/v1/inventory/available")
+    @PreAuthorize("hasAnyRole('ROLE_INVENTORY_CONTROLLER', 'ROLE_TRANSFUSION_OFFICER', 'ROLE_ADMIN')")
+    @Operation(summary = "Get available units by blood group and component type")
+    public ResponseEntity<ApiResponse<List<InventoryBalanceResponse>>> getAvailable(
+        @RequestParam String bloodGroup, @RequestParam String rhFactor, @RequestParam String componentType) {
+            return ResponseEntity.ok(ApiResponse.success(inventoryService.getAvailableUnits(bloodGroup, rhFactor, componentType)));
+    }
+    
     @GetMapping("/api/v1/inventory/blood-group/{bloodGroup}")
     @PreAuthorize("hasAnyRole('ROLE_INVENTORY_CONTROLLER','ROLE_ADMIN')")
     @Operation(summary = "Stock by blood group")
     public ResponseEntity<ApiResponse<List<InventoryBalanceResponse>>> getByBloodGroup(
             @PathVariable String bloodGroup) {
         return ResponseEntity.ok(ApiResponse.success(inventoryService.getByBloodGroup(bloodGroup)));
+    }
+
+    @GetMapping("/api/v1/inventory/component/{componentId}")
+    @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER', 'ROLE_INVENTORY_CONTROLLER','ROLE_ADMIN')")
+    @Operation(summary = "Get inventory record by componentID")
+    public ResponseEntity<ApiResponse<List<InventoryBalanceResponse>>> getByComponentId(@PathVariable Long componentId) {
+        return ResponseEntity.ok(ApiResponse.success(inventoryService.getByComponentId(componentId)));
     }
 
     @GetMapping("/api/v1/inventory/low-stock")
@@ -73,7 +90,7 @@ public class InventoryController {
     }
 
     @GetMapping("/api/v1/inventory/summary")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TRANSFUSION_OFFICER')")
+    @PreAuthorize("hasAnyRole('ROLE_INVENTORY_CONTROLLER', 'ROLE_ADMIN', 'ROLE_TRANSFUSION_OFFICER')")
     @Operation(summary = "Summary grid (blood group x component type)")
     public ResponseEntity<ApiResponse<List<InventorySummaryResponse>>> getSummary() {
         return ResponseEntity.ok(ApiResponse.success(inventoryService.getSummary()));

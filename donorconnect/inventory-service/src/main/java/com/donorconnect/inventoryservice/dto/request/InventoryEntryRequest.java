@@ -17,5 +17,4 @@ public class InventoryEntryRequest {
     @NotNull private ComponentType componentType;
     @NotNull private LocalDate expiryDate;
     private String bagNumber;
-    private Long locationId;
 }
