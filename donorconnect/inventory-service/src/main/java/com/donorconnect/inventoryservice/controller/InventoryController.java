@@ -78,7 +78,7 @@ public class InventoryController {
     @GetMapping("/api/v1/inventory/component/{componentId}")
     @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER', 'ROLE_INVENTORY_CONTROLLER','ROLE_ADMIN')")
     @Operation(summary = "Get inventory record by componentID")
-    public ResponseEntity<ApiResponse<List<InventoryBalanceResponse>>> getByComponentId(@PathVariable Long componentId) {
+    public ResponseEntity<ApiResponse<InventoryBalanceResponse>> getByComponentId(@PathVariable Long componentId) {
         return ResponseEntity.ok(ApiResponse.success(inventoryService.getByComponentId(componentId)));
     }
 

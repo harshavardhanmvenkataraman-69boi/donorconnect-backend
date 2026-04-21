@@ -15,7 +15,6 @@ import java.time.LocalDate;
 @Builder
 public class StockTransactionRequest {
     @NotNull private Long componentId;
-    private Long locationId;
     @NotNull private TransactionType txnType;
     @NotNull @Min(1) private Integer quantity;
     private LocalDate txnDate;

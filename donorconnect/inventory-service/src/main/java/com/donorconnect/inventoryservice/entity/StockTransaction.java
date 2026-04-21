@@ -28,8 +28,6 @@ public class StockTransaction {
     @Column(nullable = false)
     private Long componentId;
 
-    private Long locationId;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TransactionType txnType;
