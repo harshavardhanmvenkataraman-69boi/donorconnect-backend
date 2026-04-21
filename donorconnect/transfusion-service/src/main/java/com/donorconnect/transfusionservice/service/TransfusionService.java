@@ -6,7 +6,7 @@ import com.donorconnect.transfusionservice.dto.request.IssueRequestDto;
 import com.donorconnect.transfusionservice.entity.*;
 import com.donorconnect.transfusionservice.enums.*;
 import com.donorconnect.transfusionservice.exception.ResourceNotFoundException;
-import com.donorconnect.transfusionservice.feign.BloodSupplyFeignClient;
+import com.donorconnect.transfusionservice.feign.InventoryFeignClient;
 import com.donorconnect.transfusionservice.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,11 +23,54 @@ public class TransfusionService {
     private final CrossmatchRequestRepository crossmatchRequestRepository;
     private final CrossmatchResultRepository crossmatchResultRepository;
     private final IssueRecordRepository issueRecordRepository;
-    private final BloodSupplyFeignClient bloodSupplyFeignClient;
+    private final InventoryFeignClient inventoryFeignClient;
+    private final BloodCompatibilityChecker compatibilityChecker;
+
 
     // --- CROSSMATCH REQUESTS ---
 
     public CrossmatchRequest createRequest(CrossmatchRequestDto req) {
+
+        // Step 1: Check inventory availability across all compatible blood groups
+        int totalAvailable = 0;
+        String componentType = req.getComponentType() != null
+                ? req.getComponentType() : "PRBC"; // default to PRBC
+
+        if (req.getBloodGroup() != null && req.getRhFactor() != null
+                && req.getRequiredUnits() != null) {
+
+            List<String[]> compatibleGroups = compatibilityChecker
+                    .getCompatibleGroups(req.getBloodGroup(), req.getRhFactor(), componentType);
+
+            for (String[] group : compatibleGroups) {
+                try {
+                    List<Map<String, Object>> units = inventoryFeignClient
+                            .getAvailableUnits(group[0], group[1], componentType);
+                    totalAvailable += units.size();
+                } catch (Exception e) {
+                    log.warn("Could not fetch inventory for group={} rh={}: {}",
+                            group[0], group[1], e.getMessage());
+                }
+            }
+        }
+
+        // Step 2: Determine status based on availability
+        CrossmatchStatus initialStatus;
+        String notes;
+
+        if (req.getRequiredUnits() == null || totalAvailable == 0) {
+            initialStatus = CrossmatchStatus.INSUFFICIENT_STOCK;
+            notes = "No compatible units available. Required: " + req.getRequiredUnits();
+        } else if (totalAvailable < req.getRequiredUnits()) {
+            initialStatus = CrossmatchStatus.PARTIALLY_AVAILABLE;
+            notes = "Only " + totalAvailable + " compatible units available."
+                    + " Required: " + req.getRequiredUnits();
+        } else {
+            initialStatus = CrossmatchStatus.PENDING;
+            notes = totalAvailable + " compatible units available."
+                    + " Required: " + req.getRequiredUnits();
+        }
+
         CrossmatchRequest r = CrossmatchRequest.builder()
                 .patientId(req.getPatientId())
                 .orderBy(req.getOrderBy())
@@ -36,7 +79,8 @@ public class TransfusionService {
                 .requiredUnits(req.getRequiredUnits())
                 .priority(req.getPriority() != null ? req.getPriority() : CrossmatchPriority.ROUTINE)
                 .requestDate(LocalDate.now())
-                .status(CrossmatchStatus.PENDING)
+                .status(initialStatus)
+                .notes(notes)
                 .build();
         return crossmatchRequestRepository.save(r);
     }
@@ -67,12 +111,16 @@ public class TransfusionService {
     // --- CROSSMATCH RESULTS ---
 
     public CrossmatchResult createResult(CrossmatchResultRequest req) {
-        // Synchronous safety check: crossmatch is allowed only when the unit is still AVAILABLE.
-        Map<String, Object> componentResponse = bloodSupplyFeignClient.getComponentById(req.getComponentId());
-        String status = extractComponentStatus(componentResponse);
 
-        if (!"AVAILABLE".equalsIgnoreCase(status)) {
-            throw new IllegalStateException("Component not available for crossmatch. Status: " + status);
+        // Safety check using inventory-service instead of blood-supply-service
+        Map<String, Object> inventoryResponse =
+                inventoryFeignClient.getInventoryByComponentId(req.getComponentId());
+
+        Object inventoryStatus = inventoryResponse.get("status");
+        if (inventoryStatus == null ||
+                !"AVAILABLE".equalsIgnoreCase(inventoryStatus.toString())) {
+            throw new IllegalStateException(
+                    "Component not available for crossmatch. Status: " + inventoryStatus);
         }
 
         CrossmatchResult r = CrossmatchResult.builder()
@@ -86,13 +134,15 @@ public class TransfusionService {
                 .build();
         CrossmatchResult saved = crossmatchResultRepository.save(r);
 
-        // If compatible, reserve the unit immediately to prevent parallel allocation.
         if (req.getCompatibility() == Compatibility.COMPATIBLE) {
             CrossmatchRequest request = getRequestById(req.getRequestId());
             request.setStatus(CrossmatchStatus.MATCHED);
             crossmatchRequestRepository.save(request);
 
-            bloodSupplyFeignClient.updateComponentStatus(req.getComponentId(), "RESERVED");
+            inventoryFeignClient.updateInventoryStatus(
+                    req.getComponentId(),
+                    Map.of("status", "RESERVED", "reason", "Reserved after crossmatch")
+            );
         }
         return saved;
     }
@@ -119,7 +169,10 @@ public class TransfusionService {
                 .build();
         IssueRecord saved = issueRecordRepository.save(r);
 
-        bloodSupplyFeignClient.updateComponentStatus(req.getComponentId(), "ISSUED");
+        inventoryFeignClient.updateInventoryStatus(
+                req.getComponentId(),
+                Map.of("status", "ISSUED", "reason", "Issued to patient")
+        );
         return saved;
     }
 
