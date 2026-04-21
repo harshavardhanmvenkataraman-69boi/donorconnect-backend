@@ -59,7 +59,7 @@ public class InventoryService {
         InventoryBalance saved = balanceRepo.save(balance);
 
         // Record a RECEIPT stock transaction
-        recordTransaction(saved.getComponentId(), saved.getLocationId(),
+        recordTransaction(saved.getComponentId(),
                 TransactionType.RECEIPT, 1, null, "Initial receipt from collection");
 
         // Check if expiry is within warning window
@@ -106,7 +106,7 @@ public class InventoryService {
             default -> TransactionType.ADJUST;
         };
 
-        recordTransaction(componentId, balance.getLocationId(), txnType, 1, null, request.getReason());
+        recordTransaction(componentId, txnType, 1, null, request.getReason());
 
         log.info("InventoryBalance status updated for componentId={}: {} → {}", componentId, prev, request.getStatus());
         return toBalanceResponse(saved);
@@ -160,7 +160,6 @@ public class InventoryService {
     public StockTransactionResponse createTransaction(StockTransactionRequest request) {
         StockTransaction txn = StockTransaction.builder()
                 .componentId(request.getComponentId())
-                .locationId(request.getLocationId())
                 .txnType(request.getTxnType())
                 .quantity(request.getQuantity())
                 .txnDate(request.getTxnDate() != null ? request.getTxnDate() : LocalDate.now())
@@ -219,10 +218,9 @@ public class InventoryService {
         }
     }
 
-    private void recordTransaction(Long componentId, Long locationId, TransactionType type, int qty, String ref, String notes) {
+    private void recordTransaction(Long componentId, TransactionType type, int qty, String ref, String notes) {
         txnRepo.save(StockTransaction.builder()
                 .componentId(componentId)
-                .locationId(locationId)
                 .txnType(type)
                 .quantity(qty)
                 .txnDate(LocalDate.now())
@@ -237,7 +235,7 @@ public class InventoryService {
                 .bloodGroup(b.getBloodGroup()).rhFactor(b.getRhFactor())
                 .componentType(b.getComponentType()).bagNumber(b.getBagNumber())
                 .expiryDate(b.getExpiryDate()).quantity(b.getQuantity())
-                .status(b.getStatus()).locationId(b.getLocationId())
+            .status(b.getStatus())
                 .createdAt(b.getCreatedAt()).updatedAt(b.getUpdatedAt()).build();
     }
 
@@ -251,7 +249,7 @@ public class InventoryService {
     private StockTransactionResponse toTxnResponse(StockTransaction t) {
         return StockTransactionResponse.builder()
                 .txnId(t.getTxnId()).componentId(t.getComponentId())
-                .locationId(t.getLocationId()).txnType(t.getTxnType())
+            .txnType(t.getTxnType())
                 .quantity(t.getQuantity()).txnDate(t.getTxnDate())
                 .referenceId(t.getReferenceId()).notes(t.getNotes())
                 .performedBy(t.getPerformedBy()).createdAt(t.getCreatedAt()).build();
