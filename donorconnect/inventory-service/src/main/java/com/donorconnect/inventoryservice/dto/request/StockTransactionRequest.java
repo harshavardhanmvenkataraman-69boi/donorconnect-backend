@@ -9,7 +9,10 @@ import lombok.*;
 
 import java.time.LocalDate;
 
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data 
+@NoArgsConstructor 
+@AllArgsConstructor 
+@Builder
 public class StockTransactionRequest {
     @NotNull private Long componentId;
     private Long locationId;

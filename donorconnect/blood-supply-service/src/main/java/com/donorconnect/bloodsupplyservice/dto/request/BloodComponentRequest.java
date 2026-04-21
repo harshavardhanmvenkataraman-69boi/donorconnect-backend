@@ -16,4 +16,6 @@ public class BloodComponentRequest {
     private Integer volume;
     private LocalDate manufactureDate;
     private LocalDate expiryDate;
+    private String bloodGroup;
+    private String rhFactor;
 }

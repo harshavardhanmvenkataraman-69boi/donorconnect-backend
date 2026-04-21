@@ -2,8 +2,8 @@ package com.donorconnect.bloodsupplyservice.dto.request;
 
 import com.donorconnect.bloodsupplyservice.enums.CollectionStatus;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import org.antlr.v4.runtime.misc.NotNull;
 
 import java.time.LocalDate;
 
