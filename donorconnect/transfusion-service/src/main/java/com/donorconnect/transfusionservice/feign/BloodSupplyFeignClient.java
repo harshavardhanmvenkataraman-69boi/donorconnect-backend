@@ -1,23 +1,30 @@
 package com.donorconnect.transfusionservice.feign;
 
+import com.donorconnect.transfusionservice.config.FeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.Map;
 
 /**
- * OpenFeign client for synchronous reads from blood-supply-service.
- * Used to check real-time component availability before confirming crossmatch.
+ * OpenFeign client for synchronous calls to blood-supply-service.
  */
-@FeignClient(name = "blood-supply-service", path = "/blood")
+@FeignClient(name = "blood-supply-service", path = "/api/v1", configuration = FeignConfig.class)
 public interface BloodSupplyFeignClient {
+
     @GetMapping("/components/{id}")
-    Map<String, Object> getComponentById(@PathVariable Long id);
+    Map<String, Object> getComponentById(@PathVariable("id") Long id);
 
     @GetMapping("/components/available")
     List<Map<String, Object>> getAvailableComponents();
 
-    @GetMapping("/inventory")
-    List<Map<String, Object>> getInventory();
+//    @GetMapping("/inventory")
+//    List<Map<String, Object>> getInventory();
+
+    @PutMapping("/components/{componentId}/status")
+    Map<String, Object> updateComponentStatus(
+            @PathVariable("componentId") Long componentId,
+            @RequestParam("status") String status
+    );
 }

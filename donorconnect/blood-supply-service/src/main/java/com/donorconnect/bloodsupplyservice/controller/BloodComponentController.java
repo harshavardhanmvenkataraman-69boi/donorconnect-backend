@@ -16,7 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/components")
+@RequestMapping("/api/v1/components")
 @RequiredArgsConstructor
 @Tag(name = "Blood Components", description = "Blood component processing and management")
 public class BloodComponentController {
@@ -39,8 +39,15 @@ public class BloodComponentController {
         return ResponseEntity.ok(ApiResponse.success(bloodComponentService.getAll(PageRequest.of(page, size))));
     }
 
+    @GetMapping("/available")
+    @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_INVENTORY_CONTROLLER','ROLE_ADMIN')")
+    @Operation(summary = "Get all available components")
+    public ResponseEntity<ApiResponse<?>> getAvailableComponents() {
+        return ResponseEntity.ok(ApiResponse.success(bloodComponentService.getAvailable()));
+    }
+
     @GetMapping("/{componentId}")
-    @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_ADMIN','ROLE_INVENTORY_CONTROLLER')")
+    @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_ADMIN','ROLE_INVENTORY_CONTROLLER','ROLE_TRANSFUSION_OFFICER')")
     @Operation(summary = "Get component by ID")
     public ResponseEntity<ApiResponse<?>> getById(@PathVariable Long componentId) {
         return ResponseEntity.ok(ApiResponse.success(bloodComponentService.getById(componentId)));
@@ -67,8 +74,8 @@ public class BloodComponentController {
         return ResponseEntity.ok(ApiResponse.success(bloodComponentService.getByStatus(status)));
     }
 
-    @PatchMapping("/{componentId}/status")
-    @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_ADMIN')")
+    @PutMapping("/{componentId}/status")
+    @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_ADMIN','ROLE_TRANSFUSION_OFFICER')")
     @Operation(summary = "Update component status")
     public ResponseEntity<ApiResponse<?>> updateStatus(@PathVariable Long componentId,
                                                        @RequestParam ComponentStatus status) {
