@@ -2,11 +2,16 @@ package com.donorconnect.safetyservice.service;
 
 import com.donorconnect.safetyservice.dto.request.LookbackRequest;
 import com.donorconnect.safetyservice.dto.request.ReactionRequest;
+import com.donorconnect.safetyservice.dto.response.ApiResponse;
 import com.donorconnect.safetyservice.entity.LookbackTrace;
 import com.donorconnect.safetyservice.entity.Reaction;
 import com.donorconnect.safetyservice.enums.ReactionStatus;
 import com.donorconnect.safetyservice.enums.Severity;
 import com.donorconnect.safetyservice.exception.ResourceNotFoundException;
+import com.donorconnect.safetyservice.exception.ServiceUnavailableException;
+import com.donorconnect.safetyservice.feign.BloodComponentClient;
+import com.donorconnect.safetyservice.feign.BloodIssueClient;
+import com.donorconnect.safetyservice.feign.DonationClient;
 import com.donorconnect.safetyservice.repository.LookbackTraceRepository;
 import com.donorconnect.safetyservice.repository.ReactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +28,20 @@ public class SafetyService {
 
     private final ReactionRepository reactionRepository;
     private final LookbackTraceRepository lookbackTraceRepository;
+    private final BloodIssueClient bloodIssueClient;
+    private final BloodComponentClient bloodComponentClient;
+    private final DonationClient donationClient;
 
     // --- REACTIONS ---
 
     public Reaction create(ReactionRequest req) {
+
+       ApiResponse<?> issueResponse= bloodIssueClient.getIssueById(req.getIssueId());
+       if(!issueResponse.isSuccess()){
+           throw new ServiceUnavailableException("Transfusion service is currently unavailable. Please try again later.");
+
+       }
+
         Reaction r = Reaction.builder()
                 .issueId(req.getIssueId())
                 .patientId(req.getPatientId())
@@ -73,6 +88,14 @@ public class SafetyService {
     // --- LOOKBACK ---
 
     public LookbackTrace createTrace(LookbackRequest req) {
+       ApiResponse<?> donationResponse= donationClient.getById(req.getDonationId());
+       if(!donationResponse.isSuccess()){
+              throw new ServiceUnavailableException("Blood supply service is currently unavailable. Please try again later.");
+       }
+        ApiResponse<?> componentResponse=  bloodComponentClient.getById(req.getComponentId());
+        if(!componentResponse.isSuccess()){
+            throw new ServiceUnavailableException("Blood supply service is currently unavailable. Please try again later.");
+        }
         LookbackTrace t = LookbackTrace.builder()
                 .donationId(req.getDonationId())
                 .componentId(req.getComponentId())
