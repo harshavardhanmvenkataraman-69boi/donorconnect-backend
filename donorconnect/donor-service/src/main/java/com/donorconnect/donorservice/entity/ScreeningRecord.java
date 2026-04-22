@@ -2,18 +2,35 @@ package com.donorconnect.donorservice.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
-@Entity @Table(name = "screening_records") @Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Entity
+@Table(name = "screening_records")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ScreeningRecord {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long screeningId;
-    @Column(nullable = false) private Long donorId;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long screeningId;
+
+    @Column(nullable = false)
+    private Long donorId;
+
     private LocalDate screeningDate;
-    @Column(columnDefinition = "TEXT") private String vitalsJson;
-    @Column(columnDefinition = "TEXT") private String questionnaireJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String vitalsJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String questionnaireJson;
+
     private Boolean clearedFlag;
-    private Long clearedBy;
-    @Column(columnDefinition = "TEXT") private String notes;
-    private LocalDateTime createdAt;
-    @PrePersist public void prePersist() { createdAt = LocalDateTime.now(); }
+
+    private String clearedBy;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 }
+
