@@ -26,14 +26,14 @@ public class DonorController {
 //    private final DonationService donationService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Register new donor")
     public ResponseEntity<ApiResponse<?>> create(@RequestBody DonorRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Donor registered", donorService.create(request)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Get all donors (paginated)")
     public ResponseEntity<ApiResponse<?>> getAll(
             @ParameterObject @PageableDefault(size = 20, sort = "donorId") Pageable pageable) {
@@ -41,14 +41,14 @@ public class DonorController {
     }
 
     @GetMapping("/{donorId}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN','PHLEBOTOMIST')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN','ROLE_PHLEBOTOMIST')")
     @Operation(summary = "Get donor by ID")
     public ResponseEntity<ApiResponse<?>> getById(@PathVariable Long donorId) {
         return ResponseEntity.ok(ApiResponse.success(donorService.getById(donorId)));
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Search donors by name or blood group")
     public ResponseEntity<ApiResponse<?>> search(
             @RequestParam(required = false) String name,
@@ -57,7 +57,7 @@ public class DonorController {
     }
 
     @PutMapping("/{donorId}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Update donor info")
     public ResponseEntity<ApiResponse<?>> update(@PathVariable Long donorId,
                                                  @RequestBody DonorRequest request) {
@@ -65,7 +65,7 @@ public class DonorController {
     }
 
     @PutMapping("/{donorId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Change donor status")
     public ResponseEntity<ApiResponse<?>> updateStatus(@PathVariable Long donorId,
                                                        @RequestParam DonorStatus status) {
@@ -85,14 +85,14 @@ public class DonorController {
 //    }
 
     @GetMapping("/blood-group/{bloodGroup}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Filter donors by blood group")
     public ResponseEntity<ApiResponse<?>> getByBloodGroup(@PathVariable String bloodGroup) {
         return ResponseEntity.ok(ApiResponse.success(donorService.getByBloodGroup(bloodGroup)));
     }
 
     @GetMapping("/type/{donorType}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Filter donors by type")
     public ResponseEntity<ApiResponse<?>> getByType(@PathVariable DonorType donorType) {
         return ResponseEntity.ok(ApiResponse.success(donorService.getByType(donorType)));

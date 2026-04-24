@@ -19,28 +19,28 @@ public class DeferralController {
     private final DeferralService deferralService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Create deferral")
     public ResponseEntity<ApiResponse<?>> create(@RequestBody DeferralRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Deferral created", deferralService.create(request)));
     }
 
     @GetMapping("/{deferralId}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Get deferral by ID")
     public ResponseEntity<ApiResponse<?>> getById(@PathVariable Long deferralId) {
         return ResponseEntity.ok(ApiResponse.success(deferralService.getById(deferralId)));
     }
 
     @GetMapping("/donor/{donorId}")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "All deferrals for a donor")
     public ResponseEntity<ApiResponse<?>> getByDonor(@PathVariable Long donorId) {
         return ResponseEntity.ok(ApiResponse.success(deferralService.getByDonor(donorId)));
     }
 
     @PutMapping("/{deferralId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Update deferral")
     public ResponseEntity<ApiResponse<?>> update(@PathVariable Long deferralId,
                                                  @RequestBody DeferralRequest request) {
@@ -53,14 +53,14 @@ public class DeferralController {
      * PERMANENT deferrals cannot be lifted.
      */
     @PatchMapping("/{deferralId}/lift")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Lift a temporary deferral")
     public ResponseEntity<ApiResponse<?>> lift(@PathVariable Long deferralId) {
         return ResponseEntity.ok(ApiResponse.success("Deferral lifted", deferralService.lift(deferralId)));
     }
 
     @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "All currently active deferrals")
     public ResponseEntity<ApiResponse<?>> getActive() {
         return ResponseEntity.ok(ApiResponse.success(deferralService.getActive()));
@@ -71,7 +71,7 @@ public class DeferralController {
      * Useful for audits and reporting.
      */
     @GetMapping("/expired")
-    @PreAuthorize("hasAnyRole('RECEPTION','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "All expired temporary deferrals (processed by nightly scheduler)")
     public ResponseEntity<ApiResponse<?>> getExpired() {
         return ResponseEntity.ok(ApiResponse.success(deferralService.getExpiredDeferrals()));

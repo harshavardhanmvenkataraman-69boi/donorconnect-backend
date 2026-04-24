@@ -1,6 +1,6 @@
 package com.donorconnect.security;
 
-import com.donorconnect.repositroy.UserRepository;
+import com.donorconnect.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;

@@ -1,13 +1,16 @@
 package com.donorconnect.security;
 
+import com.donorconnect.entity.auth.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class JwtTokenProvider {
@@ -34,14 +37,27 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtExpiration);
 
+        // Collect granted authorities (e.g. ROLE_RECEPTION) into a list of strings
+        List<String> roles = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+
+        // Single role string for API-Gateway compatibility
+        String primaryRole = roles.isEmpty() ? "" : roles.get(0);
+
+        // Extract userId if principal is our User entity
+        String userId = null;
+        if (authentication.getPrincipal() instanceof User user) {
+            userId = String.valueOf(user.getUserId());
+        }
+
         return Jwts.builder()
                 .setSubject(username)
+                .claim("roles", roles)          // List  – read by donor-service / other microservices
+                .claim("role", primaryRole)     // String – read by API-Gateway JwtUtil
+                .claim("userId", userId)        // String – read by API-Gateway JwtUtil
                 .setIssuedAt(now)
                 .setExpiration(expiry)
-                // The Secret Key (getSigningKey()): This is your private "stamp" that
-                // only your server knows
-                //The Algorithm (HS256): This is the mathematical formula used to mix
-                // the data and the key together.
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
