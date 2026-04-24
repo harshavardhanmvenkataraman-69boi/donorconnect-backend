@@ -11,15 +11,16 @@ import com.donorconnect.billingservice.model.BillingRef;
 import com.donorconnect.billingservice.repository.BillingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,7 +65,16 @@ public class BillingServiceImpl implements BillingService {
     @Override
     @Transactional(readOnly = true)
     public Page<BillingResponseDTO> getAllBillings(Pageable pageable) {
-        return billingRepository.findAll(pageable).map(this::mapToResponse);
+        Page<BillingRef> billingPage = billingRepository.findAll(pageable);
+
+        // Convert each BillingRef to BillingResponseDTO using traditional for-loop
+        List<BillingResponseDTO> responseList = new ArrayList<>();
+        for (BillingRef billing : billingPage.getContent()) {
+            responseList.add(mapToResponse(billing));
+        }
+
+        // Create a new Page with converted DTOs
+        return new PageImpl<>(responseList, pageable, billingPage.getTotalElements());
     }
 
     @Override
@@ -90,10 +100,17 @@ public class BillingServiceImpl implements BillingService {
         if (from.isAfter(to)) {
             throw new InvalidDateRangeException(from, to);
         }
-        return billingRepository.findByBillingDateBetween(from, to)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+
+        // Fetch all billings in the date range
+        List<BillingRef> billings = billingRepository.findByBillingDateBetween(from, to);
+
+        // Convert to DTOs using traditional for-loop
+        List<BillingResponseDTO> responseList = new ArrayList<>();
+        for (BillingRef billing : billings) {
+            responseList.add(mapToResponse(billing));
+        }
+
+        return responseList;
     }
 
     @Override

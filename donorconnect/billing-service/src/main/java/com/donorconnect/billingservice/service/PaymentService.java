@@ -20,6 +20,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 
@@ -148,10 +149,14 @@ public class PaymentService {
     // GET: All transactions for a billing record
     // ─────────────────────────────────────────────────────────────────────────
     public List<PaymentTransactionDTO> getTransactionsByBillingId(Integer billingId) {
-        return paymentRepo.findByBillingId(billingId)
-                .stream()
-                .map(this::mapToDTO)
-                .toList();
+        List<PaymentTransaction> transactions = paymentRepo.findByBillingId(billingId);
+        List<PaymentTransactionDTO> dtoList = new ArrayList<>();
+
+        for (PaymentTransaction txn : transactions) {
+            dtoList.add(mapToDTO(txn));
+        }
+
+        return dtoList;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
