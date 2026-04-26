@@ -12,6 +12,7 @@ import lombok.*;
 @AllArgsConstructor 
 @Builder
 public class InventoryStatusUpdateRequest {
-    @NotNull private InventoryStatus status;
+    @NotNull
+    private String status;
     private String reason;
 }

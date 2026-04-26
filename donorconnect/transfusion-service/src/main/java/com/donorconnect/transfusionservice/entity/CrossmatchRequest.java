@@ -33,4 +33,7 @@ public class CrossmatchRequest {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    @Column(columnDefinition = "TEXT")
+    private String availableComponentIds;
 }

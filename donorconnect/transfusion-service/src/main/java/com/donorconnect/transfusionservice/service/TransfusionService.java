@@ -2,9 +2,11 @@ package com.donorconnect.transfusionservice.service;
 
 import com.donorconnect.transfusionservice.dto.request.CrossmatchRequestDto;
 import com.donorconnect.transfusionservice.dto.request.CrossmatchResultRequest;
+import com.donorconnect.transfusionservice.dto.request.InventoryStatusUpdateRequest;
 import com.donorconnect.transfusionservice.dto.request.IssueRequestDto;
 import com.donorconnect.transfusionservice.entity.*;
 import com.donorconnect.transfusionservice.enums.*;
+import com.donorconnect.transfusionservice.exception.ComponentAlreadyIssuedException;
 import com.donorconnect.transfusionservice.exception.ResourceNotFoundException;
 import com.donorconnect.transfusionservice.feign.InventoryFeignClient;
 import com.donorconnect.transfusionservice.repository.*;
@@ -15,8 +17,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service @RequiredArgsConstructor @Slf4j
 public class TransfusionService {
@@ -33,6 +37,7 @@ public class TransfusionService {
 
         // Step 1: Check inventory availability across all compatible blood groups
         int totalAvailable = 0;
+        List<Long> componentIds = new ArrayList<>();
         String componentType = req.getComponentType() != null
                 ? req.getComponentType() : "PRBC"; // default to PRBC
 
@@ -44,9 +49,23 @@ public class TransfusionService {
 
             for (String[] group : compatibleGroups) {
                 try {
-                    List<Map<String, Object>> units = inventoryFeignClient
+                    Map<String, Object> response = inventoryFeignClient
                             .getAvailableUnits(group[0], group[1], componentType);
-                    totalAvailable += units.size();
+                    // Extract list from "data" field of ApiResponse
+                    Object data = response.get("data");
+                    if (data instanceof List<?> list) {
+                        totalAvailable += list.size();
+
+                        // ADD — extract componentIds from each item
+                        for (Object item : list) {
+                            if (item instanceof Map<?, ?> itemMap) {
+                                Object compId = itemMap.get("componentId");
+                                if (compId != null) {
+                                    componentIds.add(Long.valueOf(compId.toString()));
+                                }
+                            }
+                        }
+                    }
                 } catch (Exception e) {
                     log.warn("Could not fetch inventory for group={} rh={}: {}",
                             group[0], group[1], e.getMessage());
@@ -71,6 +90,11 @@ public class TransfusionService {
                     + " Required: " + req.getRequiredUnits();
         }
 
+        // Convert componentIds list to comma separated string
+        String componentIdsStr = componentIds.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+
         CrossmatchRequest r = CrossmatchRequest.builder()
                 .patientId(req.getPatientId())
                 .orderBy(req.getOrderBy())
@@ -81,6 +105,7 @@ public class TransfusionService {
                 .requestDate(LocalDate.now())
                 .status(initialStatus)
                 .notes(notes)
+                .availableComponentIds(componentIdsStr)
                 .build();
         return crossmatchRequestRepository.save(r);
     }
@@ -112,13 +137,14 @@ public class TransfusionService {
 
     public CrossmatchResult createResult(CrossmatchResultRequest req) {
 
-        // Safety check using inventory-service instead of blood-supply-service
+        // Safety check using inventory-service
         Map<String, Object> inventoryResponse =
                 inventoryFeignClient.getInventoryByComponentId(req.getComponentId());
 
-        Object inventoryStatus = inventoryResponse.get("status");
-        if (inventoryStatus == null ||
-                !"AVAILABLE".equalsIgnoreCase(inventoryStatus.toString())) {
+        // Status is inside "data" because response is wrapped in ApiResponse
+        String inventoryStatus = extractStatusFromApiResponse(inventoryResponse);
+
+        if (!"AVAILABLE".equalsIgnoreCase(inventoryStatus)) {
             throw new IllegalStateException(
                     "Component not available for crossmatch. Status: " + inventoryStatus);
         }
@@ -141,7 +167,10 @@ public class TransfusionService {
 
             inventoryFeignClient.updateInventoryStatus(
                     req.getComponentId(),
-                    Map.of("status", "RESERVED", "reason", "Reserved after crossmatch")
+                    InventoryStatusUpdateRequest.builder()
+                            .status("RESERVED")
+                            .reason("Reserved after crossmatch")
+                            .build()
             );
         }
         return saved;
@@ -159,6 +188,18 @@ public class TransfusionService {
     // --- ISSUE ---
 
     public IssueRecord issue(IssueRequestDto req) {
+        // Check if component is RESERVED before issuing
+        Map<String, Object> inventoryResponse =
+                inventoryFeignClient.getInventoryByComponentId(req.getComponentId());
+
+        String inventoryStatus = extractStatusFromApiResponse(inventoryResponse);
+
+        // Only RESERVED components should be issued
+        // (RESERVED means crossmatch was done and unit is allocated for this patient)
+        if (!"RESERVED".equalsIgnoreCase(inventoryStatus)) {
+            throw new ComponentAlreadyIssuedException(req.getComponentId(), inventoryStatus);
+        }
+
         IssueRecord r = IssueRecord.builder()
                 .componentId(req.getComponentId())
                 .patientId(req.getPatientId())
@@ -171,7 +212,10 @@ public class TransfusionService {
 
         inventoryFeignClient.updateInventoryStatus(
                 req.getComponentId(),
-                Map.of("status", "ISSUED", "reason", "Issued to patient")
+                InventoryStatusUpdateRequest.builder()
+                        .status("ISSUED")
+                        .reason("Issued to patient")
+                        .build()
         );
         return saved;
     }
@@ -200,12 +244,14 @@ public class TransfusionService {
     }
 
     @SuppressWarnings("unchecked")
-    private String extractComponentStatus(Map<String, Object> response) {
+    private String extractStatusFromApiResponse(Map<String, Object> response) {
+        // Try root level first
         Object directStatus = response.get("status");
         if (directStatus != null) {
             return String.valueOf(directStatus);
         }
 
+        // Try inside "data" — ApiResponse wrapper
         Object data = response.get("data");
         if (data instanceof Map<?, ?> dataMap) {
             Object nestedStatus = ((Map<String, Object>) dataMap).get("status");
@@ -214,6 +260,7 @@ public class TransfusionService {
             }
         }
 
-        throw new IllegalStateException("Unable to read component status from blood-supply response");
+        throw new IllegalStateException(
+                "Unable to read status from inventory response: " + response);
     }
 }

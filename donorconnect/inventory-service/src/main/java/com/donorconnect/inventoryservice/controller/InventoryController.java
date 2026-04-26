@@ -43,7 +43,7 @@ public class InventoryController {
     /**
      * Called by blood-supply-service via Feign when Component status changes.
      */
-    @PatchMapping("/api/v1/inventory/{componentId}/status")
+    @PutMapping("/api/v1/inventory/{componentId}/status")
     @PreAuthorize("hasAnyRole('ROLE_INVENTORY_CONTROLLER', 'ROLE_ADMIN', 'ROLE_TRANSFUSION_OFFICER')") 
     @Operation(summary = "Update inventory status (called by blood-supply-service via Feign)")
     public ResponseEntity<ApiResponse<InventoryBalanceResponse>> updateStatus(
