@@ -21,7 +21,6 @@ public class InventoryBalanceResponse {
     private LocalDate expiryDate;
     private Integer quantity;
     private InventoryStatus status;
-    private Long locationId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

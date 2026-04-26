@@ -57,8 +57,6 @@ public class InventoryBalance {
     @Column(nullable = false)
     private InventoryStatus status;
 
-    private Long locationId;
-
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

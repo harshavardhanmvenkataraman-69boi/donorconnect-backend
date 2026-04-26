@@ -1,5 +1,6 @@
 package com.donorconnect.transfusionservice.feign;
 import com.donorconnect.transfusionservice.config.FeignConfig;
+import com.donorconnect.transfusionservice.dto.request.InventoryStatusUpdateRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,16 +16,16 @@ public interface InventoryFeignClient {
 
     //Check Availability
     @GetMapping("/api/v1/inventory/available")
-    List<Map<String, Object>> getAvailableUnits(
+    Map<String, Object> getAvailableUnits(
             @RequestParam String bloodGroup,
             @RequestParam String rhFactor,
             @RequestParam String componentType);
 
     // Reserve unit
-    @PatchMapping("/api/v1/inventory/{componentId}/status")
+    @PutMapping("/api/v1/inventory/{componentId}/status")
     Map<String, Object> updateInventoryStatus(
             @PathVariable Long componentId,
-            @RequestBody Map<String, String> request
+            @RequestBody InventoryStatusUpdateRequest request
     );
 }
 

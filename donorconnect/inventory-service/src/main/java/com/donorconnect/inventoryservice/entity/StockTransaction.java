@@ -28,8 +28,6 @@ public class StockTransaction {
     @Column(nullable = false)
     private Long componentId;
 
-    private Long locationId;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TransactionType txnType;
@@ -40,13 +38,11 @@ public class StockTransaction {
     @Column(nullable = false)
     private LocalDate txnDate;
 
-    /** Reference to issueId, recallId, transferId etc. depending on txnType */
     private String referenceId;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    /** Who performed the transaction (userId from JWT) */
     private Long performedBy;
 
     @Column(nullable = false, updatable = false)
