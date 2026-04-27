@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 
-@FeignClient(name = "inventory-service", configuration = FeignConfig.class)
+@FeignClient(name = "inventory-service", configuration = FeignConfig.class, fallback = InventoryFeignClientFallback.class)
 public interface InventoryFeignClient {
 
     @GetMapping("/api/v1/inventory/component/{componentId}")
