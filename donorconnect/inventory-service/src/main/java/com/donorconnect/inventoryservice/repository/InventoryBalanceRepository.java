@@ -20,6 +20,9 @@ public interface InventoryBalanceRepository extends JpaRepository<InventoryBalan
 
     List<InventoryBalance> findByBloodGroupAndRhFactor(BloodGroup bloodGroup, RhFactor rhFactor);
 
+    List<InventoryBalance> findByBloodGroupAndComponentTypeAndStatus(
+            BloodGroup bloodGroup, ComponentType componentType, InventoryStatus status);
+
     List<InventoryBalance> findByStatus(InventoryStatus status);
 
     List<InventoryBalance> findByBloodGroupAndRhFactorAndComponentTypeAndStatus(

@@ -1,2 +1,5 @@
 package com.donorconnect.inventoryservice.enums;
-public enum ComponentType { PRBC, PLATELET, PLASMA, CRYO }
+
+public enum ComponentType { 
+    PRBC, PLATELET, PLASMA, CRYO 
+}

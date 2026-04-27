@@ -17,8 +17,10 @@ public class RouteValidator {
             "/api/v1/auth/validate-reset-token",
             "/actuator/health",
             "/swagger-ui",
-            "/v3/api-docs",
-            "/api-docs"
+            "/swagger-ui.html",
+            "/v1/api-docs",
+            "/api-docs",
+            "/swagger-resources"
     );
 
     public boolean isOpenEndpoint(ServerHttpRequest request) {

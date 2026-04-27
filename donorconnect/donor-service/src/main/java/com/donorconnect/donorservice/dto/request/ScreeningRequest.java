@@ -10,8 +10,6 @@ import java.time.LocalDate;
 public class ScreeningRequest {
     @NotNull
     private Long donorId;
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate screeningDate = LocalDate.now();
     private String vitalsJson;
     private String questionnaireJson;
     private Boolean clearedFlag;
