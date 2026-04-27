@@ -5,6 +5,7 @@ import com.donorconnect.bloodsupplyservice.dto.response.ApiResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+
 @FeignClient(
         name = "donor-service",
         contextId = "donorFeignClient",
@@ -15,6 +16,11 @@ public interface DonorFeignClient {
 
     @GetMapping("/{donorId}")
     ApiResponse<?> getDonorById(
+            @PathVariable Long donorId
+    );
+
+    @GetMapping("/{donorId}/deferral")
+    ApiResponse<?> getDonorDeferralStatus(
             @PathVariable Long donorId
     );
 }

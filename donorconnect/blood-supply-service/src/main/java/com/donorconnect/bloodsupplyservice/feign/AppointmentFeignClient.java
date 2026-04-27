@@ -5,7 +5,9 @@ import com.donorconnect.bloodsupplyservice.dto.AppointmentDto;
 import com.donorconnect.bloodsupplyservice.dto.response.ApiResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 @FeignClient(
@@ -19,5 +21,11 @@ public interface AppointmentFeignClient {
     @GetMapping("/donor/{donorId}")
     ApiResponse<List<AppointmentDto>> getAppointmentsByDonor(
             @PathVariable Long donorId
+    );
+
+    @PatchMapping("/{appointmentId}/status")
+    ApiResponse<?> updateAppointmentStatus(
+            @PathVariable Long appointmentId,
+            @RequestParam String status
     );
 }
