@@ -80,35 +80,37 @@ public class InventoryService {
     @Transactional
     public InventoryBalanceResponse updateStatus(Long componentId, InventoryStatusUpdateRequest request) {
         InventoryBalance balance = balanceRepo.findByComponentId(componentId)
-                .orElseThrow(() -> new ResourceNotFoundException("InventoryBalance not found for componentId=" + componentId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "InventoryBalance not found for componentId=" + componentId));
 
         InventoryStatus prev = balance.getStatus();
-        balance.setStatus(request.getStatus());
+        InventoryStatus newStatus = InventoryStatus.valueOf(request.getStatus().toUpperCase()); // convert here
+        balance.setStatus(newStatus);
 
         // Decrement quantity for ISSUED/DISPOSED
-        if (request.getStatus() == InventoryStatus.ISSUED || request.getStatus() == InventoryStatus.DISPOSED) {
+        if (newStatus == InventoryStatus.ISSUED || newStatus == InventoryStatus.DISPOSED) {
             balance.setQuantity(Math.max(0, balance.getQuantity() - 1));
         }
         // Restore quantity if released from quarantine
-        if (prev == InventoryStatus.QUARANTINED && request.getStatus() == InventoryStatus.AVAILABLE) {
+        if (prev == InventoryStatus.QUARANTINED && newStatus == InventoryStatus.AVAILABLE) {
             balance.setQuantity(balance.getQuantity() + 1);
         }
 
         InventoryBalance saved = balanceRepo.save(balance);
 
-        // Record transaction
-        TransactionType txnType = switch (request.getStatus()) {
-            case ISSUED -> TransactionType.ISSUE;
+        TransactionType txnType = switch (newStatus) {
+            case ISSUED      -> TransactionType.ISSUE;
             case QUARANTINED -> TransactionType.QUARANTINE;
-            case AVAILABLE -> TransactionType.RELEASE;
-            case RESERVED -> TransactionType.ADJUST;
-            case DISPOSED -> TransactionType.ADJUST;
-            default -> TransactionType.ADJUST;
+            case AVAILABLE   -> TransactionType.RELEASE;
+            case RESERVED    -> TransactionType.ADJUST;
+            case DISPOSED    -> TransactionType.ADJUST;
+            default          -> TransactionType.ADJUST;
         };
 
         recordTransaction(componentId, txnType, 1, null, request.getReason());
 
-        log.info("InventoryBalance status updated for componentId={}: {} → {}", componentId, prev, request.getStatus());
+        log.info("InventoryBalance status updated for componentId={}: {} → {}",
+                componentId, prev, newStatus);
         return toBalanceResponse(saved);
     }
 
