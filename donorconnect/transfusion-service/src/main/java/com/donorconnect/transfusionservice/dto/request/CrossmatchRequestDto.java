@@ -1,6 +1,7 @@
 package com.donorconnect.transfusionservice.dto.request;
 
 import com.donorconnect.transfusionservice.enums.CrossmatchPriority;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -15,4 +16,6 @@ public class CrossmatchRequestDto {
     private Integer requiredUnits;
     private CrossmatchPriority priority;
     private LocalDate requestDate;
+    private String notes;
+    private String componentType;
 }

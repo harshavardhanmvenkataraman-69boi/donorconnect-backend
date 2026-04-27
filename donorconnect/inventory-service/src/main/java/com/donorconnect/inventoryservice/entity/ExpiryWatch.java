@@ -35,7 +35,6 @@ public class ExpiryWatch {
     @Column(nullable = false)
     private LocalDate expiryDate;
 
-    /** Date this alert was first raised */
     @Column(nullable = false)
     private LocalDate flagDate;
 

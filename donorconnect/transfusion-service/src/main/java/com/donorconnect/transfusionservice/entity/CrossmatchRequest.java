@@ -30,4 +30,10 @@ public class CrossmatchRequest {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private CrossmatchStatus status = CrossmatchStatus.PENDING;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @Column(columnDefinition = "TEXT")
+    private String availableComponentIds;
 }
