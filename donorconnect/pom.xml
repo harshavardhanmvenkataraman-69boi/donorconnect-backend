@@ -13,6 +13,7 @@
     <modules>
         <module>eureka-server</module>
         <module>api-gateway</module>
+        <module>config-server</module>
         <module>auth-service</module>
         <module>config-service</module>
         <module>donor-service</module>
