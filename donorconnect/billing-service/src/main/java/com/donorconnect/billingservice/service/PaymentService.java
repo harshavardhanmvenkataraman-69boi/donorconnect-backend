@@ -1,7 +1,6 @@
 package com.donorconnect.billingservice.service;
 
 import com.donorconnect.billingservice.dto.*;
-import com.donorconnect.billingservice.model.BillingRef;
 import com.donorconnect.billingservice.model.PaymentTransaction;
 import com.donorconnect.billingservice.repository.BillingRepository;
 import com.donorconnect.billingservice.repository.PaymentTransactionRepository;
@@ -45,10 +44,10 @@ public class PaymentService {
     // STEP 1: Create a Razorpay order and persist a local transaction record
     // ─────────────────────────────────────────────────────────────────────────
     @Transactional
-    public PaymentOrderResponseDTO createOrder(PaymentOrderRequestDTO req) throws RazorpayException {
+    public com.project.billing.dto.PaymentOrderResponseDTO createOrder(com.project.billing.dto.PaymentOrderRequestDTO req) throws RazorpayException {
 
         // Load and validate the billing record
-        BillingRef billing = billingRepository.findById(req.getBillingId())
+        com.donorconnect.billingservice.model.BillingRef billing = billingRepository.findById(req.getBillingId())
                 .orElseThrow(() -> new RuntimeException("Billing not found: " + req.getBillingId()));
 
         String currentStatus = billing.getStatus().toUpperCase();
@@ -83,7 +82,7 @@ public class PaymentService {
                 .build();
         paymentRepo.save(txn);
 
-        return PaymentOrderResponseDTO.builder()
+        return com.project.billing.dto.PaymentOrderResponseDTO.builder()
                 .transactionId(txn.getTransactionId())
                 .razorpayOrderId(rzpOrderId)
                 .amount(billing.getChargeAmount())
@@ -96,7 +95,7 @@ public class PaymentService {
     // STEP 2: Verify the Razorpay signature and update billing status to PAID
     // ─────────────────────────────────────────────────────────────────────────
     @Transactional
-    public PaymentVerifyResponseDTO verifyPayment(PaymentVerifyRequestDTO req) {
+    public com.project.billing.dto.PaymentVerifyResponseDTO verifyPayment(com.project.billing.dto.PaymentVerifyRequestDTO req) {
 
         PaymentTransaction txn = paymentRepo.findByRazorpayOrderId(req.getRazorpayOrderId())
                 .orElseThrow(() -> new RuntimeException(
@@ -121,7 +120,7 @@ public class PaymentService {
                 log.info("Billing {} marked as PAID after successful payment", b.getBillingId());
             });
 
-            return PaymentVerifyResponseDTO.builder()
+            return com.project.billing.dto.PaymentVerifyResponseDTO.builder()
                     .transactionId(txn.getTransactionId())
                     .status("SUCCESS")
                     .message("Payment verified and billing marked as PAID")
@@ -136,7 +135,7 @@ public class PaymentService {
 
             log.warn("Signature verification FAILED for order: {}", req.getRazorpayOrderId());
 
-            return PaymentVerifyResponseDTO.builder()
+            return com.project.billing.dto.PaymentVerifyResponseDTO.builder()
                     .transactionId(txn.getTransactionId())
                     .status("FAILED")
                     .message("Signature verification failed — payment rejected")
@@ -148,9 +147,9 @@ public class PaymentService {
     // ─────────────────────────────────────────────────────────────────────────
     // GET: All transactions for a billing record
     // ─────────────────────────────────────────────────────────────────────────
-    public List<PaymentTransactionDTO> getTransactionsByBillingId(Integer billingId) {
+    public List<com.project.billing.dto.PaymentTransactionDTO> getTransactionsByBillingId(Integer billingId) {
         List<PaymentTransaction> transactions = paymentRepo.findByBillingId(billingId);
-        List<PaymentTransactionDTO> dtoList = new ArrayList<>();
+        List<com.project.billing.dto.PaymentTransactionDTO> dtoList = new ArrayList<>();
 
         for (PaymentTransaction txn : transactions) {
             dtoList.add(mapToDTO(txn));
@@ -178,8 +177,8 @@ public class PaymentService {
         }
     }
 
-    private PaymentTransactionDTO mapToDTO(PaymentTransaction txn) {
-        return PaymentTransactionDTO.builder()
+    private com.project.billing.dto.PaymentTransactionDTO mapToDTO(PaymentTransaction txn) {
+        return com.project.billing.dto.PaymentTransactionDTO.builder()
                 .transactionId(txn.getTransactionId())
                 .billingId(txn.getBillingId())
                 .amount(txn.getAmount())
