@@ -1,7 +1,9 @@
 package com.donorconnect.donorservice.entity;
 
 import com.donorconnect.donorservice.enums.DriveStatus;
+
 import jakarta.persistence.*;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

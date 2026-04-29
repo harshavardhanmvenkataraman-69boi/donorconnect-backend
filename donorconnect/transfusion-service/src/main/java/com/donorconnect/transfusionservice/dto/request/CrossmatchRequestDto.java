@@ -15,4 +15,6 @@ public class CrossmatchRequestDto {
     private Integer requiredUnits;
     private CrossmatchPriority priority;
     private LocalDate requestDate;
+    private String notes;
+    private String componentType;
 }

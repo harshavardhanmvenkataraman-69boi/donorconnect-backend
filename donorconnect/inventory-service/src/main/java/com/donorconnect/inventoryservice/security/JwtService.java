@@ -9,11 +9,6 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.List;
 
-/**
- * Stateless JWT utility for donor-service.
- * It only VALIDATES and READS tokens – it never issues them (auth-service does that).
- * The secret MUST match the one in auth-service application.properties.
- */
 @Component
 public class JwtService {
 
@@ -24,7 +19,6 @@ public class JwtService {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    /** Returns the email/username stored in the token subject. */
     public String getUsernameFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
@@ -34,11 +28,6 @@ public class JwtService {
                 .getSubject();
     }
 
-    /**
-     * Reads the "roles" claim that auth-service embeds when generating the token.
-     * Falls back gracefully if the claim is absent (older tokens).
-     */
-    @SuppressWarnings("unchecked")
     public List<SimpleGrantedAuthority> getAuthorities(String token) {
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
@@ -53,7 +42,6 @@ public class JwtService {
                     .toList();
         }
 
-        // Fallback: derive the authority from a "role" claim (single value)
         Object roleClaim = claims.get("role");
         if (roleClaim != null) {
             return List.of(new SimpleGrantedAuthority(roleClaim.toString()));
@@ -61,7 +49,6 @@ public class JwtService {
         return List.of();
     }
 
-    /** Returns true only when the token signature is valid and it is not expired. */
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()

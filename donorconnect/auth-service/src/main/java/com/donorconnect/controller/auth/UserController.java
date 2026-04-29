@@ -3,23 +3,26 @@ package com.donorconnect.controller.auth;
 import com.donorconnect.dto.response.ApiResponse;
 import com.donorconnect.enums.Enums.*;
 import com.donorconnect.service.AuthService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-@RestController // @Controller + @ResponseBody
-@RequestMapping("/api/v1/users") // used to map http requests to a controller class or method
+@RestController
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @Tag(name = "User Management", description = "Manage system users")
 public class UserController {
 
-        private final AuthService authService;
+    private final AuthService authService;
 
-    @GetMapping // read and fetch data
+    @GetMapping
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @Operation(summary = "Get all users (paginated)")
     public ResponseEntity<ApiResponse<?>> getAllUsers(
@@ -41,7 +44,6 @@ public class UserController {
     @Operation(summary = "Filter users by role")
     public ResponseEntity<ApiResponse<?>> getUsersByRole(@PathVariable UserRole role) {
         return ResponseEntity.ok(ApiResponse.success(authService.getUsersByRole(role)));
-        // role -> The variable name used inside your Java logic
     }
 
     @GetMapping("/status/{status}")

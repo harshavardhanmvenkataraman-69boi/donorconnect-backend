@@ -4,11 +4,13 @@ import com.donorconnect.dto.request.auth.*;
 import com.donorconnect.entity.auth.AuditLog;
 import com.donorconnect.entity.auth.User;
 import com.donorconnect.enums.Enums.*;
-import com.donorconnect.exception.*; // Imports all your custom exceptions
+import com.donorconnect.exception.*;
 import com.donorconnect.repository.AuditLogRepository;
 import com.donorconnect.repository.UserRepository;
 import com.donorconnect.security.JwtTokenProvider;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.*;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
@@ -34,7 +36,6 @@ public class AuthService {
     public String setupFirstAdmin(Setupadminrequest req) {
         boolean adminExists = userRepository.findByRole(UserRole.ROLE_ADMIN).size() > 0;
         if (adminExists) {
-            // TRIGGER: UserAlreadyExistsException
             throw new UserAlreadyExistsException("Admin system is already initialized. Cannot create another primary admin.");
         }
         User admin = User.builder()
@@ -72,14 +73,12 @@ public class AuthService {
             return result;
 
         } catch (AuthenticationException ex) {
-            // This catches BadCredentialsException and triggers the 401 in your GlobalHandler
             throw new JwtAuthenticationException("Authentication failed: Invalid email or password");
         }
     }
 
     public User register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
-            // TRIGGER: UserAlreadyExistsException
             throw new UserAlreadyExistsException("An account with email " + req.getEmail() + " already exists.");
         }
 
@@ -99,7 +98,6 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
         if (!passwordEncoder.matches(req.getOldPassword(), user.getPassword())) {
-            // TRIGGER: InvalidPasswordException
             throw new InvalidPasswordException("The current password you entered is incorrect.");
         }
 
@@ -132,8 +130,6 @@ public class AuthService {
     }
     public List<User> getUsersByRole(UserRole role) { return userRepository.findByRole(role); }
 
-// Finding all "INACTIVE" users to see who hasn't logged in recently.
-
     public List<User> getUsersByStatus(UserStatus status) {
         return userRepository.findByStatus(status);
     }
@@ -149,24 +145,23 @@ public class AuthService {
         userRepository.save(u);
     }
 
-    public void unlockUser(Long userId) { // now they will call the helpdesk that they forgot the password and locked their account, after verifying their identity then only the account will be unlocked
+    public void unlockUser(Long userId) {
         User u = getUserById(userId); u.setStatus(UserStatus.ACTIVE); userRepository.save(u);
     }
-    public void deactivateUser(Long userId) { // delete the accounts tha haven't been used since a long
+    public void deactivateUser(Long userId) {
         User u = getUserById(userId); u.setStatus(UserStatus.INACTIVE); userRepository.save(u);
     }
 
-
-    // It pulls every single log from the database but in a "smart" way.
-    // Instead of a List, it returns a Page
     public Page<AuditLog> getAllAuditLogs(Pageable pageable) {
-        return auditLogRepository.findAll(pageable); }
+        return auditLogRepository.findAll(pageable);
+    }
 
     // It filters the history to show only what one specific person did
     public List<AuditLog> getAuditLogsByUser(Long userId) {
-        return auditLogRepository.findByUserId(userId); }
+        return auditLogRepository.findByUserId(userId); 
+    }
 
-    // It filters by the type of event, such as "LOGIN", "DELETE_USER", or "UPDATE_BLOOD_STOCK
     public List<AuditLog> getAuditLogsByAction(String action) {
-        return auditLogRepository.findByAction(action); }
+        return auditLogRepository.findByAction(action); 
+    }
 }

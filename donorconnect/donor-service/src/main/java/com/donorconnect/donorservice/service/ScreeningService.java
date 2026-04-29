@@ -4,10 +4,14 @@ import com.donorconnect.donorservice.dto.request.ScreeningRequest;
 import com.donorconnect.donorservice.entity.ScreeningRecord;
 import com.donorconnect.donorservice.exception.ResourceNotFoundException;
 import com.donorconnect.donorservice.repository.ScreeningRecordRepository;
+
 import jakarta.transaction.Transactional;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -27,7 +31,7 @@ public class ScreeningService {
     @Transactional
     public ScreeningRecord create(ScreeningRequest req) {
         ScreeningRecord record = ScreeningRecord.builder()
-                .donorId(req.getDonorId()).screeningDate(req.getScreeningDate())
+                .donorId(req.getDonorId()).screeningDate(LocalDate.now())
                 .vitalsJson(req.getVitalsJson()).questionnaireJson(req.getQuestionnaireJson())
                 .clearedFlag(req.getClearedFlag()).clearedBy(req.getClearedBy()).notes(req.getNotes())
                 .build();
@@ -83,4 +87,3 @@ public class ScreeningService {
         return saved;
     }
 }
-
