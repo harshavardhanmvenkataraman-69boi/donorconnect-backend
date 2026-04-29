@@ -33,4 +33,3 @@ public class ScreeningRecord {
     @Column(columnDefinition = "TEXT")
     private String notes;
 }
-

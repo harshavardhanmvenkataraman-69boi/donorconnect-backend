@@ -3,9 +3,12 @@ package com.donorconnect.donorservice.controller;
 import com.donorconnect.donorservice.dto.request.DeferralRequest;
 import com.donorconnect.donorservice.dto.response.ApiResponse;
 import com.donorconnect.donorservice.service.DeferralService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -47,11 +50,6 @@ public class DeferralController {
         return ResponseEntity.ok(ApiResponse.success("Deferral updated", deferralService.update(deferralId, request)));
     }
 
-    /**
-     * Lifts a TEMPORARY deferral manually before its endDate.
-     * Also restores donor status to ACTIVE if no other active deferrals remain.
-     * PERMANENT deferrals cannot be lifted.
-     */
     @PatchMapping("/{deferralId}/lift")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Lift a temporary deferral")
@@ -66,10 +64,6 @@ public class DeferralController {
         return ResponseEntity.ok(ApiResponse.success(deferralService.getActive()));
     }
 
-    /**
-     * Admin visibility into deferrals that were expired by the nightly scheduler.
-     * Useful for audits and reporting.
-     */
     @GetMapping("/expired")
     @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "All expired temporary deferrals (processed by nightly scheduler)")

@@ -1,7 +1,7 @@
 package com.donorconnect.safetyservice.dto.request;
 
 import lombok.Data;
-import org.antlr.v4.runtime.misc.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 

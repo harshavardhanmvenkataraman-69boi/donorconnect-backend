@@ -9,10 +9,6 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Immutable audit record of every quantity change to a component in inventory.
- * Created on RECEIPT, ISSUE, RETURN, TRANSFER, ADJUST, QUARANTINE, RELEASE.
- */
 @Entity
 @Table(name = "stock_transactions")
 @Data

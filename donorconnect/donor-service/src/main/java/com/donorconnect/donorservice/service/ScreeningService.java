@@ -4,8 +4,11 @@ import com.donorconnect.donorservice.dto.request.ScreeningRequest;
 import com.donorconnect.donorservice.entity.ScreeningRecord;
 import com.donorconnect.donorservice.exception.ResourceNotFoundException;
 import com.donorconnect.donorservice.repository.ScreeningRecordRepository;
+
 import jakarta.transaction.Transactional;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -84,4 +87,3 @@ public class ScreeningService {
         return saved;
     }
 }
-
