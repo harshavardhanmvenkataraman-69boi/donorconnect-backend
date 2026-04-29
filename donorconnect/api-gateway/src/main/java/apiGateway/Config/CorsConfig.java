@@ -1,6 +1,5 @@
 package apiGateway.Config;
 
-
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 
