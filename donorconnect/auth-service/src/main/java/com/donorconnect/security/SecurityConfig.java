@@ -41,7 +41,17 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",
-            "/v1/api-docs/**"
+            "/v1/api-docs/**",
+            // Frontend static resources
+            "/",
+            "/index.html",
+            "/assets/**",
+            "/favicon.svg",
+            "/icons.svg",
+            "/login",
+            "/setup",
+            "/forgot-password",
+            "/reset-password"
     };
 
     @Bean
