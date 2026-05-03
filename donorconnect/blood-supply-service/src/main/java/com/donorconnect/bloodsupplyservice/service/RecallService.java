@@ -28,7 +28,7 @@ public class RecallService {
     private final QuarantineActionRepository quarantineActionRepository;
     private final DisposalRecordRepository disposalRecordRepository;
 
-    // ===================== RECALL =====================
+
 
     public RecallNotice createRecall(RecallRequest req) {
         RecallNotice recall = RecallNotice.builder()

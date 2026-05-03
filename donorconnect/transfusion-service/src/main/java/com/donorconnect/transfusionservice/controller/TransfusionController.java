@@ -4,26 +4,28 @@ import com.donorconnect.transfusionservice.dto.request.CrossmatchRequestDto;
 import com.donorconnect.transfusionservice.dto.request.CrossmatchResultRequest;
 import com.donorconnect.transfusionservice.dto.request.IssueRequestDto;
 import com.donorconnect.transfusionservice.dto.response.ApiResponse;
-import com.donorconnect.transfusionservice.entity.*;
 import com.donorconnect.transfusionservice.enums.CrossmatchStatus;
 import com.donorconnect.transfusionservice.service.TransfusionService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
-@RestController @RequestMapping("/transfusion")
+@RestController 
+@RequestMapping("/transfusion")
 @RequiredArgsConstructor
 @Tag(name = "Transfusion", description = "Crossmatch, reservation and blood issue to patients")
 public class TransfusionController {
+
     private final TransfusionService transfusionService;
 
     // --- CROSSMATCH REQUESTS ---
-
     @PostMapping("/api/v1/crossmatch/requests")
     @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
     @Operation(summary = "Create crossmatch request")
@@ -93,7 +95,6 @@ public class TransfusionController {
     }
 
     // --- ISSUE ---
-
     @PostMapping("/api/v1/issue")
     @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
     @Operation(summary = "Issue blood to patient")
