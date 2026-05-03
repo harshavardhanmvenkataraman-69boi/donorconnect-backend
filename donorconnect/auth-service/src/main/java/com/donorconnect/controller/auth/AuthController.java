@@ -71,4 +71,11 @@ public class AuthController {
     public ResponseEntity<ApiResponse<?>> resetPassword(@RequestBody ResetPasswordRequest request) {
         return ResponseEntity.ok(ApiResponse.success(authService.resetPassword(request), null));
     }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Logout (records audit entry)")
+    public ResponseEntity<ApiResponse<?>> logout(Authentication auth) {
+        authService.logout(auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Logout recorded", null));
+    }
 }

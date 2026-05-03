@@ -21,7 +21,11 @@ import java.util.Arrays;
 @Configuration
 public class CorsConfig {
 
-    private static final String ALLOWED_ORIGIN = "http://localhost:3000";
+    private static final String[] ALLOWED_ORIGINS = {
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:8001"
+    };
 
     /**
      * CORS configuration handled at the gateway level.
@@ -29,7 +33,7 @@ public class CorsConfig {
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.asList(ALLOWED_ORIGIN));
+        config.setAllowedOrigins(Arrays.asList(ALLOWED_ORIGINS));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(Arrays.asList("*"));
         config.setAllowCredentials(true);

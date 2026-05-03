@@ -21,9 +21,24 @@ public class GatewayConfig {
         return builder.routes()
 
                 // auth-service routes
-                // Public: Only login and setup/reset logic
-                .route("auth-public", r -> r
-                        .path("/api/auth/setup-admin", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password")
+                // Public: Login and setup/reset logic (MUST BE FIRST - NO JWT)
+                .route("auth-login", r -> r
+                        .path("/api/auth/login")
+                        .filters(f -> f.rewritePath("/api/auth/(?<segment>.*)", "/api/v1/auth/${segment}"))
+                        .uri("lb://auth-service"))
+
+                .route("auth-setup", r -> r
+                        .path("/api/auth/setup-admin")
+                        .filters(f -> f.rewritePath("/api/auth/(?<segment>.*)", "/api/v1/auth/${segment}"))
+                        .uri("lb://auth-service"))
+
+                .route("auth-forgot", r -> r
+                        .path("/api/auth/forgot-password")
+                        .filters(f -> f.rewritePath("/api/auth/(?<segment>.*)", "/api/v1/auth/${segment}"))
+                        .uri("lb://auth-service"))
+
+                .route("auth-reset", r -> r
+                        .path("/api/auth/reset-password")
                         .filters(f -> f.rewritePath("/api/auth/(?<segment>.*)", "/api/v1/auth/${segment}"))
                         .uri("lb://auth-service"))
 
@@ -34,9 +49,9 @@ public class GatewayConfig {
                                 .filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config())))
                         .uri("lb://auth-service"))
 
-                // Admin & User Management
+                // Admin & User Management & Audit Logs
                 .route("auth-users", r -> r
-                        .path("/api/v1/users/**", "/admin/**")
+                        .path("/api/v1/users/**", "/api/v1/audit-logs/**", "/admin/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config())))
                         .uri("lb://auth-service"))
 

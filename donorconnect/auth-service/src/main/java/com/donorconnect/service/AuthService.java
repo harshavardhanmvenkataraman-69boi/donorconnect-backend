@@ -33,6 +33,18 @@ public class AuthService {
 
     private final Map<String, String> resetTokens = new HashMap<>();
 
+    private void recordAudit(User user, String action, String resource, String metadata) {
+        auditLogRepository.save(AuditLog.builder()
+                .userId(user.getUserId())
+                .userName(user.getName())
+                .userRole(user.getRole() != null ? user.getRole().name() : null)
+                .action(action)
+                .resource(resource)
+                .metadata(metadata)
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
+
     public String setupFirstAdmin(Setupadminrequest req) {
         boolean adminExists = userRepository.findByRole(UserRole.ROLE_ADMIN).size() > 0;
         if (adminExists) {
@@ -48,6 +60,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(admin);
+        recordAudit(admin, "SETUP_ADMIN", "AUTH", "Initial admin created: " + admin.getEmail());
         return "Admin created successfully";
     }
 
@@ -62,8 +75,7 @@ public class AuthService {
             User user = userRepository.findByEmail(req.getEmail())
                     .orElseThrow(() -> new ResourceNotFoundException("User", "email", req.getEmail()));
 
-            auditLogRepository.save(AuditLog.builder().userId(user.getUserId())
-                    .action("LOGIN").resource("AUTH").timestamp(LocalDateTime.now()).build());
+            recordAudit(user, "LOGIN", "AUTH", "User login: " + user.getEmail());
 
             Map<String, String> result = new HashMap<>();
             result.put("token", token);
@@ -90,7 +102,9 @@ public class AuthService {
                 .role(req.getRole())
                 .status(UserStatus.ACTIVE)
                 .build();
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        recordAudit(saved, "REGISTER", "USER", "User registered: " + saved.getEmail());
+        return saved;
     }
 
     public void changePassword(String email, ChangePasswordRequest req) {
@@ -103,6 +117,7 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
+        recordAudit(user, "CHANGE_PASSWORD", "AUTH", "Password changed");
     }
 
     public String forgotPassword(String email) {
@@ -121,7 +136,14 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
+        recordAudit(user, "RESET_PASSWORD", "AUTH", "Password reset by token");
         return "Password reset successful";
+    }
+
+    public void logout(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        recordAudit(user, "LOGOUT", "AUTH", "User logout: " + user.getEmail());
     }
 
     public Page<User> getAllUsers(Pageable pageable) {
@@ -164,4 +186,5 @@ public class AuthService {
     public List<AuditLog> getAuditLogsByAction(String action) {
         return auditLogRepository.findByAction(action); 
     }
+
 }
