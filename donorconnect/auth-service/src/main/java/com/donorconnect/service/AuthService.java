@@ -4,11 +4,13 @@ import com.donorconnect.dto.request.auth.*;
 import com.donorconnect.entity.auth.AuditLog;
 import com.donorconnect.entity.auth.User;
 import com.donorconnect.enums.Enums.*;
-import com.donorconnect.exception.*; // Imports all your custom exceptions
+import com.donorconnect.exception.*;
 import com.donorconnect.repository.AuditLogRepository;
 import com.donorconnect.repository.UserRepository;
 import com.donorconnect.security.JwtTokenProvider;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.*;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
@@ -31,10 +33,21 @@ public class AuthService {
 
     private final Map<String, String> resetTokens = new HashMap<>();
 
+    private void recordAudit(User user, String action, String resource, String metadata) {
+        auditLogRepository.save(AuditLog.builder()
+                .userId(user.getUserId())
+                .userName(user.getName())
+                .userRole(user.getRole() != null ? user.getRole().name() : null)
+                .action(action)
+                .resource(resource)
+                .metadata(metadata)
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
+
     public String setupFirstAdmin(Setupadminrequest req) {
         boolean adminExists = userRepository.findByRole(UserRole.ROLE_ADMIN).size() > 0;
         if (adminExists) {
-            // TRIGGER: UserAlreadyExistsException
             throw new UserAlreadyExistsException("Admin system is already initialized. Cannot create another primary admin.");
         }
         User admin = User.builder()
@@ -47,6 +60,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(admin);
+        recordAudit(admin, "SETUP_ADMIN", "AUTH", "Initial admin created: " + admin.getEmail());
         return "Admin created successfully";
     }
 
@@ -61,8 +75,7 @@ public class AuthService {
             User user = userRepository.findByEmail(req.getEmail())
                     .orElseThrow(() -> new ResourceNotFoundException("User", "email", req.getEmail()));
 
-            auditLogRepository.save(AuditLog.builder().userId(user.getUserId())
-                    .action("LOGIN").resource("AUTH").timestamp(LocalDateTime.now()).build());
+            recordAudit(user, "LOGIN", "AUTH", "User login: " + user.getEmail());
 
             Map<String, String> result = new HashMap<>();
             result.put("token", token);
@@ -72,14 +85,12 @@ public class AuthService {
             return result;
 
         } catch (AuthenticationException ex) {
-            // This catches BadCredentialsException and triggers the 401 in your GlobalHandler
             throw new JwtAuthenticationException("Authentication failed: Invalid email or password");
         }
     }
 
     public User register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
-            // TRIGGER: UserAlreadyExistsException
             throw new UserAlreadyExistsException("An account with email " + req.getEmail() + " already exists.");
         }
 
@@ -91,7 +102,9 @@ public class AuthService {
                 .role(req.getRole())
                 .status(UserStatus.ACTIVE)
                 .build();
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        recordAudit(saved, "REGISTER", "USER", "User registered: " + saved.getEmail());
+        return saved;
     }
 
     public void changePassword(String email, ChangePasswordRequest req) {
@@ -99,12 +112,12 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
         if (!passwordEncoder.matches(req.getOldPassword(), user.getPassword())) {
-            // TRIGGER: InvalidPasswordException
             throw new InvalidPasswordException("The current password you entered is incorrect.");
         }
 
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
+        recordAudit(user, "CHANGE_PASSWORD", "AUTH", "Password changed");
     }
 
     public String forgotPassword(String email) {
@@ -123,7 +136,14 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
+        recordAudit(user, "RESET_PASSWORD", "AUTH", "Password reset by token");
         return "Password reset successful";
+    }
+
+    public void logout(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        recordAudit(user, "LOGOUT", "AUTH", "User logout: " + user.getEmail());
     }
 
     public Page<User> getAllUsers(Pageable pageable) {
@@ -131,8 +151,6 @@ public class AuthService {
         return userRepository.findAll(pageable);
     }
     public List<User> getUsersByRole(UserRole role) { return userRepository.findByRole(role); }
-
-// Finding all "INACTIVE" users to see who hasn't logged in recently.
 
     public List<User> getUsersByStatus(UserStatus status) {
         return userRepository.findByStatus(status);
@@ -149,24 +167,24 @@ public class AuthService {
         userRepository.save(u);
     }
 
-    public void unlockUser(Long userId) { // now they will call the helpdesk that they forgot the password and locked their account, after verifying their identity then only the account will be unlocked
+    public void unlockUser(Long userId) {
         User u = getUserById(userId); u.setStatus(UserStatus.ACTIVE); userRepository.save(u);
     }
-    public void deactivateUser(Long userId) { // delete the accounts tha haven't been used since a long
+    public void deactivateUser(Long userId) {
         User u = getUserById(userId); u.setStatus(UserStatus.INACTIVE); userRepository.save(u);
     }
 
-
-    // It pulls every single log from the database but in a "smart" way.
-    // Instead of a List, it returns a Page
     public Page<AuditLog> getAllAuditLogs(Pageable pageable) {
-        return auditLogRepository.findAll(pageable); }
+        return auditLogRepository.findAll(pageable);
+    }
 
     // It filters the history to show only what one specific person did
     public List<AuditLog> getAuditLogsByUser(Long userId) {
-        return auditLogRepository.findByUserId(userId); }
+        return auditLogRepository.findByUserId(userId); 
+    }
 
-    // It filters by the type of event, such as "LOGIN", "DELETE_USER", or "UPDATE_BLOOD_STOCK
     public List<AuditLog> getAuditLogsByAction(String action) {
-        return auditLogRepository.findByAction(action); }
+        return auditLogRepository.findByAction(action); 
+    }
+
 }

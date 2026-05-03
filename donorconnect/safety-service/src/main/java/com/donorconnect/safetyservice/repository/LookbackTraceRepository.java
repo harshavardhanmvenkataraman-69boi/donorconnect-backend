@@ -1,7 +1,7 @@
 package com.donorconnect.safetyservice.repository;
 
-
 import com.donorconnect.safetyservice.entity.LookbackTrace;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
@@ -12,4 +12,3 @@ public interface LookbackTraceRepository extends JpaRepository<LookbackTrace, Lo
     List<LookbackTrace> findByPatientId(Long patientId);
     List<LookbackTrace> findByComponentId(Long componentId);
 }
-

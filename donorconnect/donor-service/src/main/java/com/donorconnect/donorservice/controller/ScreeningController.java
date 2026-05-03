@@ -3,9 +3,12 @@ package com.donorconnect.donorservice.controller;
 import com.donorconnect.donorservice.dto.request.ScreeningRequest;
 import com.donorconnect.donorservice.dto.response.ApiResponse;
 import com.donorconnect.donorservice.service.ScreeningService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -52,4 +55,3 @@ public class ScreeningController {
         return ResponseEntity.ok(ApiResponse.success("Screening updated", screeningService.update(screeningId, request)));
     }
 }
-

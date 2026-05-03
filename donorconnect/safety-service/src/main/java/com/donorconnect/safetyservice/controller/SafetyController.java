@@ -1,19 +1,18 @@
 package com.donorconnect.safetyservice.controller;
 
-
-
-
 import com.donorconnect.safetyservice.dto.request.LookbackRequest;
 import com.donorconnect.safetyservice.dto.request.ReactionRequest;
 import com.donorconnect.safetyservice.dto.response.ApiResponse;
 
-
 import com.donorconnect.safetyservice.enums.ReactionStatus;
 import com.donorconnect.safetyservice.enums.Severity;
 import com.donorconnect.safetyservice.service.SafetyService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +26,6 @@ public class SafetyController {
     private final SafetyService reactionService;
 
     // --- REACTIONS ---
-
     @PostMapping("/api/v1/reactions")
     @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
     @Operation(summary = "Log adverse reaction")
@@ -82,7 +80,6 @@ public class SafetyController {
     }
 
     // --- LOOKBACK ---
-
     @PostMapping("/api/v1/lookback")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @Operation(summary = "Create lookback trace")

@@ -1,10 +1,11 @@
 package com.donorconnect.donorservice.scheduler;
 
 import com.donorconnect.donorservice.entity.Deferral;
-
 import com.donorconnect.donorservice.service.DeferralService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 

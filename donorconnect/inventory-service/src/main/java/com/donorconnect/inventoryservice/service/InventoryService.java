@@ -35,7 +35,7 @@ public class InventoryService {
     @Value("${app.inventory.expiry-warning-days:7}")
     private int expiryWarningDays;
 
-    // ─── INVENTORY BALANCE ───────────────────────────────────────────
+    //**INVENTORY BALANCE******
 
     /**
      * Called by blood-supply-service via Feign when a new Component is created.

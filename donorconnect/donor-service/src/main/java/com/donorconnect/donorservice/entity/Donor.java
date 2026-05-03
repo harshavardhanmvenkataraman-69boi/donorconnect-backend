@@ -1,4 +1,5 @@
 package com.donorconnect.donorservice.entity;
+
 import com.donorconnect.donorservice.enums.*;
 import jakarta.persistence.*;
 import lombok.*;

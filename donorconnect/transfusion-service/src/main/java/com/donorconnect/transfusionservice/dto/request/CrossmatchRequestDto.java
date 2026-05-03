@@ -1,7 +1,6 @@
 package com.donorconnect.transfusionservice.dto.request;
 
 import com.donorconnect.transfusionservice.enums.CrossmatchPriority;
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
