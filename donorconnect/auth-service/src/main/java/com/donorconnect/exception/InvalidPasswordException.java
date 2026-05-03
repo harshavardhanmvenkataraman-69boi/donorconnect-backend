@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class InvalidPasswordException extends RuntimeException {
 
     public InvalidPasswordException(String reason) {
-
         super("Password validation failed: " + reason);
     }
 }
