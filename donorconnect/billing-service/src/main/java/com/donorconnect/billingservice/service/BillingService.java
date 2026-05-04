@@ -1,14 +1,23 @@
 package com.donorconnect.billingservice.service;
-import com.donorconnect.billingservice.entity.BillingRef;
-import com.donorconnect.billingservice.repository.BillingRefRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.time.LocalDate;
 import java.util.List;
 
-@Service @RequiredArgsConstructor
-public class BillingService {
-    private final BillingRefRepository repo;
-    public List<BillingRef> getAll() { return repo.findAll(); }
-    public List<BillingRef> getByIssueId(Long issueId) { return repo.findByIssueId(issueId); }
-    public BillingRef save(BillingRef ref) { return repo.save(ref); }
+public interface BillingService {
+
+    com.donorconnect.billingservice.dto.BillingResponseDTO createBilling(com.donorconnect.billingservice.dto.BillingRequestDTO request);
+
+    Page<com.donorconnect.billingservice.dto.BillingResponseDTO> getAllBillings(Pageable pageable);
+
+    com.donorconnect.billingservice.dto.BillingResponseDTO getBillingById(Integer billingId);
+
+    com.donorconnect.billingservice.dto.BillingResponseDTO getBillingByIssueId(Integer issueId);
+
+    List<com.donorconnect.billingservice.dto.BillingResponseDTO> exportBillings(LocalDate from, LocalDate to);
+
+    com.donorconnect.billingservice.dto.BillingResponseDTO updateBillingStatus(Integer billingId, com.donorconnect.billingservice.dto.BillingStatusUpdateDTO statusUpdate);
 }
