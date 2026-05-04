@@ -6,9 +6,21 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "donor-service", path = "/api/v1/donors", configuration = FeignConfig.class)
+@FeignClient(
+        name = "donor-service",
+        contextId = "donorFeignClient",
+        path = "/api/v1/donors",
+        configuration = FeignConfig.class
+)
 public interface DonorFeignClient {
 
     @GetMapping("/{donorId}")
-    ApiResponse<?> getDonorById(@PathVariable Long donorId);
+    ApiResponse<?> getDonorById(
+            @PathVariable Long donorId
+    );
+
+    @GetMapping("/{donorId}/deferral")
+    ApiResponse<?> getDonorDeferralStatus(
+            @PathVariable Long donorId
+    );
 }

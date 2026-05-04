@@ -3,7 +3,9 @@ package com.donorconnect.safetyservice.entity;
 
 import com.donorconnect.safetyservice.enums.ReactionStatus;
 import com.donorconnect.safetyservice.enums.Severity;
+
 import jakarta.persistence.*;
+
 import lombok.*;
 
 import java.time.LocalDate;

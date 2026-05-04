@@ -1,20 +1,15 @@
 package com.donorconnect.safetyservice.service;
 
-import com.donorconnect.safetyservice.dto.request.LookbackRequest;
-import com.donorconnect.safetyservice.dto.request.ReactionRequest;
-import com.donorconnect.safetyservice.dto.response.ApiResponse;
-import com.donorconnect.safetyservice.entity.LookbackTrace;
-import com.donorconnect.safetyservice.entity.Reaction;
-import com.donorconnect.safetyservice.enums.ReactionStatus;
-import com.donorconnect.safetyservice.enums.Severity;
-import com.donorconnect.safetyservice.exception.ResourceNotFoundException;
-import com.donorconnect.safetyservice.exception.ServiceUnavailableException;
-import com.donorconnect.safetyservice.feign.BloodComponentClient;
-import com.donorconnect.safetyservice.feign.BloodIssueClient;
-import com.donorconnect.safetyservice.feign.DonationClient;
-import com.donorconnect.safetyservice.repository.LookbackTraceRepository;
-import com.donorconnect.safetyservice.repository.ReactionRepository;
+import com.donorconnect.safetyservice.dto.request.*;
+import com.donorconnect.safetyservice.dto.response.*;
+import com.donorconnect.safetyservice.entity.*;
+import com.donorconnect.safetyservice.enums.*;
+import com.donorconnect.safetyservice.exception.*;
+import com.donorconnect.safetyservice.feign.*;
+import com.donorconnect.safetyservice.repository.*;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,7 +28,6 @@ public class SafetyService {
     private final DonationClient donationClient;
 
     // --- REACTIONS ---
-
     public Reaction create(ReactionRequest req) {
 
        ApiResponse<?> issueResponse= bloodIssueClient.getIssueById(req.getIssueId());
@@ -86,7 +80,6 @@ public class SafetyService {
     }
 
     // --- LOOKBACK ---
-
     public LookbackTrace createTrace(LookbackRequest req) {
        ApiResponse<?> donationResponse= donationClient.getById(req.getDonationId());
        if(!donationResponse.isSuccess()){
