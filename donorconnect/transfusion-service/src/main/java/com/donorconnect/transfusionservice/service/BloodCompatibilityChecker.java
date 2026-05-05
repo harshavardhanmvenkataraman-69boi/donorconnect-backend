@@ -6,7 +6,7 @@ import java.util.List;
 @Component
 public class BloodCompatibilityChecker {
 
-    // ─── MAIN METHOD — routes by component type ───────────────────────
+    // MAIN METHOD — routes by component type
     public List<String[]> getCompatibleGroups(String bloodGroup, String rhFactor, String componentType) {
         return switch (componentType.toUpperCase()) {
             case "PRBC"     -> getCompatibleGroupsForPRBC(bloodGroup, rhFactor);
@@ -17,7 +17,7 @@ public class BloodCompatibilityChecker {
         };
     }
 
-    // ─── PRBC ────────────────────────────────────────────────────────
+    // PRBC 
     // Strict ABO + Rh matching
     private List<String[]> getCompatibleGroupsForPRBC(String bloodGroup, String rhFactor) {
         String recipient = bloodGroup + (rhFactor.equalsIgnoreCase("POSITIVE") ? "+" : "-");
@@ -51,7 +51,7 @@ public class BloodCompatibilityChecker {
         };
     }
 
-    // ─── PLASMA ──────────────────────────────────────────────────────
+    // PLASMA
     // Rh factor does NOT matter — only ABO matters
     // AB plasma = universal donor
     private List<String[]> getCompatibleGroupsForPlasma(String bloodGroup) {
@@ -74,7 +74,7 @@ public class BloodCompatibilityChecker {
         };
     }
 
-    // ─── PLATELET ────────────────────────────────────────────────────
+    // PLATELET
     // ABO-compatible preferred, flexible in emergency
     // Rh factor not strictly required
     private List<String[]> getCompatibleGroupsForPlatelet(String bloodGroup) {
@@ -99,7 +99,7 @@ public class BloodCompatibilityChecker {
         };
     }
 
-    // ─── CRYO ────────────────────────────────────────────────────────
+    // CRYO
     // Universal — any group can receive from any group
     // Rh factor does NOT matter
     private List<String[]> getCompatibleGroupsForCryo() {
