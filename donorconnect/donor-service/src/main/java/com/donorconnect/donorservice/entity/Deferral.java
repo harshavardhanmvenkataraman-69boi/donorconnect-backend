@@ -1,5 +1,7 @@
 package com.donorconnect.donorservice.entity;
+
 import com.donorconnect.donorservice.enums.*;
+
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -32,4 +34,3 @@ public class Deferral {
     @Builder.Default
     private DeferralStatus status = DeferralStatus.ACTIVE;
 }
-

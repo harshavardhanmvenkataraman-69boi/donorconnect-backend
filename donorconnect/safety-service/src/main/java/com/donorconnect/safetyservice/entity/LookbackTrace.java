@@ -1,4 +1,5 @@
 package com.donorconnect.safetyservice.entity;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,4 +31,3 @@ public class LookbackTrace {
     @Builder.Default
     private String status = "ACTIVE";
 }
-

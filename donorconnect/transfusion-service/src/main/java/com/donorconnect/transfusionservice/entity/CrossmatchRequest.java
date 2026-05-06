@@ -1,10 +1,18 @@
 package com.donorconnect.transfusionservice.entity;
+
 import com.donorconnect.transfusionservice.enums.*;
+
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDate;
 
-@Entity @Table(name = "crossmatch_requests") @Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Entity 
+@Table(name = "crossmatch_requests") 
+@Data 
+@NoArgsConstructor 
+@AllArgsConstructor 
+@Builder
 public class CrossmatchRequest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

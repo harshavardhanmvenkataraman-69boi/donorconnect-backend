@@ -2,13 +2,14 @@ package com.donorconnect.donorservice.controller;
 
 import com.donorconnect.donorservice.dto.request.DonorRequest;
 import com.donorconnect.donorservice.dto.response.ApiResponse;
-import com.donorconnect.donorservice.entity.*;
-import com.donorconnect.donorservice.enums.DonorStatus;
-import com.donorconnect.donorservice.enums.DonorType;
+import com.donorconnect.donorservice.enums.*;
 import com.donorconnect.donorservice.service.DonorService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class DonorController {
 
     private final DonorService donorService;
-//    private final DonationService donationService;
+    // private final DonationService donationService;
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
@@ -76,13 +77,6 @@ public class DonorController {
         }
         return ResponseEntity.ok(ApiResponse.success("Status updated", donorService.updateStatus(donorId, status)));
     }
-
-//    @GetMapping("/{donorId}/donation-history")
-//    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ROLE_ADMIN')")
-//    @Operation(summary = "Donor's donation history")
-//    public ResponseEntity<ApiResponse<?>> getDonationHistory(@PathVariable Long donorId) {
-//        return ResponseEntity.ok(ApiResponse.success(donationService.getByDonor(donorId)));
-//    }
 
     @GetMapping("/blood-group/{bloodGroup}")
     @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")

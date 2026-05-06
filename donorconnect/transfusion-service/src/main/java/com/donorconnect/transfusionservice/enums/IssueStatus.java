@@ -1,2 +1,5 @@
 package com.donorconnect.transfusionservice.enums;
-public enum IssueStatus { ISSUED, RETURNED }
+
+public enum IssueStatus { 
+    ISSUED, RETURNED 
+}

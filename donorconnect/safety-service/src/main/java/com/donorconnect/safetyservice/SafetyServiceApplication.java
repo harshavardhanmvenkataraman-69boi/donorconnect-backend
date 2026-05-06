@@ -1,8 +1,11 @@
 package com.donorconnect.safetyservice;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
+
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -10,8 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableFeignClients(basePackages = "com.donorconnect.safetyservice.feign")
 
 public class SafetyServiceApplication {
-    public static void main(String[] args) { SpringApplication.run(SafetyServiceApplication.class, args); }
+    public static void main(String[] args) { 
+        SpringApplication.run(SafetyServiceApplication.class, args); 
+    }
 }
-
-
-

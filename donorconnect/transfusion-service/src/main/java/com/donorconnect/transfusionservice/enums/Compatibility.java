@@ -1,2 +1,5 @@
 package com.donorconnect.transfusionservice.enums;
-public enum Compatibility { COMPATIBLE, INCOMPATIBLE }
+
+public enum Compatibility { 
+    COMPATIBLE, INCOMPATIBLE
+}

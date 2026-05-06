@@ -1,10 +1,11 @@
 package com.donorconnect.transfusionservice.feign;
+
 import com.donorconnect.transfusionservice.config.FeignConfig;
 import com.donorconnect.transfusionservice.dto.request.InventoryStatusUpdateRequest;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 
@@ -28,4 +29,3 @@ public interface InventoryFeignClient {
             @RequestBody InventoryStatusUpdateRequest request
     );
 }
-

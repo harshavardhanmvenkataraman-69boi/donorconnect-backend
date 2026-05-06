@@ -1,8 +1,9 @@
 package com.donorconnect.safetyservice.dto.request;
 
 import com.donorconnect.safetyservice.enums.Severity;
+
 import lombok.Data;
-import org.antlr.v4.runtime.misc.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 

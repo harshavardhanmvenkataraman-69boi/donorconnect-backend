@@ -1,16 +1,19 @@
 package apiGateway.Config;
 
-
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.server.ServerWebExchange;
+
 import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
@@ -18,7 +21,11 @@ import java.util.Arrays;
 @Configuration
 public class CorsConfig {
 
-    private static final String ALLOWED_ORIGIN = "http://localhost:3000";
+    private static final String[] ALLOWED_ORIGINS = {
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:8001"
+    };
 
     /**
      * CORS configuration handled at the gateway level.
@@ -26,7 +33,7 @@ public class CorsConfig {
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.asList(ALLOWED_ORIGIN));
+        config.setAllowedOrigins(Arrays.asList(ALLOWED_ORIGINS));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(Arrays.asList("*"));
         config.setAllowCredentials(true);

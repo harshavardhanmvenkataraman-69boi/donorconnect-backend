@@ -4,7 +4,6 @@ import com.donorconnect.inventoryservice.enums.*;
 
 import lombok.*;
 
-/** One cell in the blood group × component type grid */
 @Data 
 @NoArgsConstructor 
 @AllArgsConstructor 

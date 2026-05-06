@@ -10,19 +10,24 @@ import com.donorconnect.transfusionservice.exception.ComponentAlreadyIssuedExcep
 import com.donorconnect.transfusionservice.exception.ResourceNotFoundException;
 import com.donorconnect.transfusionservice.feign.InventoryFeignClient;
 import com.donorconnect.transfusionservice.repository.*;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Service @RequiredArgsConstructor @Slf4j
+@Service 
+@RequiredArgsConstructor 
+@Slf4j
 public class TransfusionService {
     private final CrossmatchRequestRepository crossmatchRequestRepository;
     private final CrossmatchResultRepository crossmatchResultRepository;
@@ -30,16 +35,14 @@ public class TransfusionService {
     private final InventoryFeignClient inventoryFeignClient;
     private final BloodCompatibilityChecker compatibilityChecker;
 
-
     // --- CROSSMATCH REQUESTS ---
-
     public CrossmatchRequest createRequest(CrossmatchRequestDto req) {
 
         // Step 1: Check inventory availability across all compatible blood groups
         int totalAvailable = 0;
         List<Long> componentIds = new ArrayList<>();
         String componentType = req.getComponentType() != null
-                ? req.getComponentType() : "PRBC"; // default to PRBC
+                ? req.getComponentType() : "PRBC";
 
         if (req.getBloodGroup() != null && req.getRhFactor() != null
                 && req.getRequiredUnits() != null) {
@@ -134,7 +137,6 @@ public class TransfusionService {
     }
 
     // --- CROSSMATCH RESULTS ---
-
     public CrossmatchResult createResult(CrossmatchResultRequest req) {
 
         // Safety check using inventory-service
@@ -186,7 +188,6 @@ public class TransfusionService {
     }
 
     // --- ISSUE ---
-
     public IssueRecord issue(IssueRequestDto req) {
         // Check if component is RESERVED before issuing
         Map<String, Object> inventoryResponse =

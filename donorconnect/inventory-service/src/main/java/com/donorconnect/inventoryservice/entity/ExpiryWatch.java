@@ -9,10 +9,6 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Alert record raised when a component's expiry is within the warning window.
- * Created automatically by ExpiryWatchScheduler.
- */
 @Entity
 @Table(name = "expiry_watch")
 @Data
@@ -25,7 +21,6 @@ public class ExpiryWatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long expiryId;
 
-    /** FK to InventoryBalance (and indirectly to Component in blood-supply-service) */
     @Column(nullable = false)
     private Long componentId;
 
