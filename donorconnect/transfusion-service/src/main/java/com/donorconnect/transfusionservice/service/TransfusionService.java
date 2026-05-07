@@ -163,8 +163,22 @@ public class TransfusionService {
         CrossmatchResult saved = crossmatchResultRepository.save(r);
 
         if (req.getCompatibility() == Compatibility.COMPATIBLE) {
+
+            long compatibleCount = crossmatchResultRepository
+                    .countByRequestIdAndCompatibility(req.getRequestId(), Compatibility.COMPATIBLE);
             CrossmatchRequest request = getRequestById(req.getRequestId());
-            request.setStatus(CrossmatchStatus.MATCHED);
+
+            if (compatibleCount >= request.getRequiredUnits()) {
+                // All required units have been crossmatched — mark request as MATCHED
+                request.setStatus(CrossmatchStatus.MATCHED);
+                log.info("CrossmatchRequest {} fully matched — {}/{} units compatible",
+                        req.getRequestId(), compatibleCount, request.getRequiredUnits());
+            } else {
+                // Still need more units to be tested — keep PENDING
+                log.info("CrossmatchRequest {} partially matched — {}/{} units compatible so far",
+                        req.getRequestId(), compatibleCount, request.getRequiredUnits());
+            }
+
             crossmatchRequestRepository.save(request);
 
             inventoryFeignClient.updateInventoryStatus(
