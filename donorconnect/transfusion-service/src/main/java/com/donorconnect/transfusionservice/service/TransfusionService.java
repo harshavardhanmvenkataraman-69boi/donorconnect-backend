@@ -254,6 +254,14 @@ public class TransfusionService {
 
     public IssueRecord returnUnit(Long id) {
         IssueRecord r = getIssueById(id);
+        // Add this block to update inventory status to AVAILABLE
+        inventoryFeignClient.updateInventoryStatus(
+                r.getComponentId(),
+                InventoryStatusUpdateRequest.builder()
+                        .status("AVAILABLE")
+                        .reason("Returned by patient")
+                        .build()
+        );
         r.setStatus(IssueStatus.RETURNED);
         return issueRecordRepository.save(r);
     }
