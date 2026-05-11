@@ -46,6 +46,10 @@ public class DonorService {
         return donorRepository.searchDonors(name, bloodGroup);
     }
 
+    public List<Donor> searchByPhone(String phone) {
+        return donorRepository.findByContactInfoContaining(phone);
+    }
+
     public Donor update(Long donorId, DonorRequest req) {
         log.info("Updating donor record donorId={}", donorId);
         Donor donor = getById(donorId);
