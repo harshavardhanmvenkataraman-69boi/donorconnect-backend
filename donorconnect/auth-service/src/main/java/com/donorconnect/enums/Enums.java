@@ -9,6 +9,7 @@ public class Enums {
     }
 
     public enum UserStatus {
-        ACTIVE, INACTIVE, LOCKED, PENDING
+        ACTIVE, INACTIVE, LOCKED
+
     }
 }
