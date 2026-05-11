@@ -91,8 +91,10 @@ public class InventoryService {
         if (newStatus == InventoryStatus.ISSUED || newStatus == InventoryStatus.DISPOSED) {
             balance.setQuantity(Math.max(0, balance.getQuantity() - 1));
         }
-        // Restore quantity if released from quarantine
-        if (prev == InventoryStatus.QUARANTINED && newStatus == InventoryStatus.AVAILABLE) {
+
+        // Restore quantity if released from quarantine or returned from issue
+        if ((prev == InventoryStatus.QUARANTINED && newStatus == InventoryStatus.AVAILABLE) ||
+                (prev == InventoryStatus.ISSUED && newStatus == InventoryStatus.AVAILABLE)) {
             balance.setQuantity(balance.getQuantity() + 1);
         }
 
