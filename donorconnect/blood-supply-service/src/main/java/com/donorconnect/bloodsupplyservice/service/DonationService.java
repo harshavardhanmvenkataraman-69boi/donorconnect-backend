@@ -2,6 +2,7 @@ package com.donorconnect.bloodsupplyservice.service;
 
 import com.donorconnect.bloodsupplyservice.dto.request.DonationRequest;
 import com.donorconnect.bloodsupplyservice.dto.AppointmentDto;
+import com.donorconnect.bloodsupplyservice.dto.response.ApiResponse;
 import com.donorconnect.bloodsupplyservice.entity.Donation;
 import com.donorconnect.bloodsupplyservice.enums.CollectionStatus;
 import com.donorconnect.bloodsupplyservice.feign.DonorFeignClient;
@@ -36,17 +37,22 @@ public class DonationService {
 
     public Donation create(DonationRequest req) {
 
-        // 1. Validate donor exists — if service down, log and continue
+        // 1. STRICTLY validate donor exists — block if not found
         try {
-            CircuitBreaker cb = circuitBreakerFactory.create("donorService");
-            cb.run(() -> { donorFeignClient.getDonorById(req.getDonorId()); return null; },
-                throwable -> { log.warn("Donor-service unavailable: {}", throwable.getMessage()); return null; });
+            ApiResponse<?> donorResponse = donorFeignClient.getDonorById(req.getDonorId());
+            if (donorResponse == null || donorResponse.getData() == null) {
+                throw new ResourceNotFoundException("Donor", "ID", req.getDonorId());
+            }
         } catch (FeignException.NotFound e) {
             throw new ResourceNotFoundException("Donor", "ID", req.getDonorId());
         } catch (FeignException.Forbidden | FeignException.Unauthorized e) {
             log.warn("Auth issue calling donor-service: {}", e.getMessage());
+            throw new ResourceNotFoundException("Donor", "ID", req.getDonorId());
+        } catch (ResourceNotFoundException e) {
+            throw e;
         } catch (Exception e) {
-            log.warn("Could not validate donor, proceeding: {}", e.getMessage());
+            log.error("Donor-service error during validation: {}", e.getMessage());
+            throw new ResourceNotFoundException("Donor", "ID", req.getDonorId());
         }
 
         // 2. Check deferral — if service down, allow donation
@@ -62,12 +68,12 @@ public class DonationService {
                     String reason = (String) map.get("reason");
                     if (Boolean.TRUE.equals(isDeferral)) {
                         throw new DonorDeferralException(
-                            "Donor is deferred and cannot donate. Reason: " + (reason != null ? reason : "Not specified"),
-                            reason != null ? reason : "DEFERRED");
+                                "Donor is deferred and cannot donate. Reason: " + (reason != null ? reason : "Not specified"),
+                                reason != null ? reason : "DEFERRED");
                     }
                 }
                 return null;
-            }, throwable -> { log.warn("Deferral service unavailable, allowing donation: {}", throwable.getMessage()); return null; });
+            }, throwable -> { log.warn("Deferral service unavailable: {}", throwable.getMessage()); return null; });
         } catch (DonorDeferralException e) {
             throw e;
         } catch (Exception e) {
@@ -85,7 +91,7 @@ public class DonationService {
                 List<AppointmentDto> appointments = appointmentResponse.getData();
 
                 if (appointments == null || appointments.isEmpty()) {
-                    log.warn("No appointments found for donor {}, proceeding", req.getDonorId());
+                    log.warn("No appointments for donor {}, proceeding", req.getDonorId());
                     return null;
                 }
 
@@ -93,10 +99,9 @@ public class DonationService {
                 boolean hasBookedAppointment = false;
 
                 for (AppointmentDto appointment : appointments) {
-                    // FIX: if dateTime is null, skip date check — treat as valid
                     boolean dateOk = appointment.getDateTime() == null
-                        || collectionDate.isAfter(appointment.getDateTime().toLocalDate())
-                        || collectionDate.isEqual(appointment.getDateTime().toLocalDate());
+                            || collectionDate.isAfter(appointment.getDateTime().toLocalDate())
+                            || collectionDate.isEqual(appointment.getDateTime().toLocalDate());
 
                     if (dateOk) {
                         hasValidAppointment = true;
@@ -113,11 +118,11 @@ public class DonationService {
                 }
                 if (!hasBookedAppointment) {
                     throw new AppointmentStatusException(
-                        "Cannot create donation: No BOOKED appointment found for donor", "NOT_BOOKED");
+                            "Cannot create donation: No BOOKED appointment found for donor", "NOT_BOOKED");
                 }
                 return null;
             }, throwable -> {
-                log.warn("Appointment-service unavailable, skipping validation: {}", throwable.getMessage());
+                log.warn("Appointment-service unavailable, skipping: {}", throwable.getMessage());
                 return null;
             });
         } catch (DonationDateValidationException | AppointmentStatusException e) {
@@ -144,7 +149,7 @@ public class DonationService {
                 CircuitBreaker cb = circuitBreakerFactory.create("updateAppointmentService");
                 final Long apptId = validAppointmentId[0];
                 cb.run(() -> { appointmentFeignClient.updateAppointmentStatus(apptId, "COMPLETED"); return null; },
-                    throwable -> { log.warn("Could not update appointment status: {}", throwable.getMessage()); return null; });
+                        throwable -> { log.warn("Could not update appointment status: {}", throwable.getMessage()); return null; });
             }
         } catch (Exception e) {
             log.warn("Appointment status update failed (non-critical): {}", e.getMessage());
@@ -164,13 +169,17 @@ public class DonationService {
 
     public List<Donation> getByDonor(Long donorId) {
         try {
-            CircuitBreaker cb = circuitBreakerFactory.create("donorService");
-            cb.run(() -> { donorFeignClient.getDonorById(donorId); return null; },
-                throwable -> { log.warn("Donor-service unavailable: {}", throwable.getMessage()); return null; });
+            ApiResponse<?> donorResponse = donorFeignClient.getDonorById(donorId);
+            if (donorResponse == null || donorResponse.getData() == null) {
+                throw new ResourceNotFoundException("Donor", "ID", donorId);
+            }
         } catch (FeignException.NotFound e) {
             throw new ResourceNotFoundException("Donor", "ID", donorId);
+        } catch (ResourceNotFoundException e) {
+            throw e;
         } catch (Exception e) {
-            log.warn("Donor validation failed: {}", e.getMessage());
+            log.error("Donor-service error: {}", e.getMessage());
+            throw new ResourceNotFoundException("Donor", "ID", donorId);
         }
         return donationRepository.findByDonorId(donorId);
     }
