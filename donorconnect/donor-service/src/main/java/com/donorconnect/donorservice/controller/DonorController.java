@@ -44,6 +44,18 @@ public class DonorController {
         );
     }
 
+    @DeleteMapping("/{donorId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Delete a donor record (admin only)")
+    public ResponseEntity<ApiResponse<?>> deleteDonor(
+            @PathVariable Long donorId,
+            @RequestParam(required = false) String reason) {
+        donorService.deleteDonor(donorId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Donor record deleted successfully", null));
+    }
+
+
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Get all donors (paginated)")

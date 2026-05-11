@@ -14,7 +14,7 @@ import java.util.List;
 public interface DeferralRepository extends JpaRepository<Deferral, Long> {
     List<Deferral> findByDonorId(Long donorId);
     List<Deferral> findByStatus(DeferralStatus status);
-
+    void deleteByDonorId(Long donorId);
     List<Deferral> findByStatusAndDeferralTypeAndEndDateLessThanEqual(
             DeferralStatus status, DeferralType deferralType, LocalDate date);
 

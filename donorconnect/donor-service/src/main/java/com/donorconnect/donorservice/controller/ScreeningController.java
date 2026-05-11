@@ -35,6 +35,15 @@ public class ScreeningController {
         return ResponseEntity.ok(ApiResponse.success(screeningService.getById(screeningId)));
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN','ROLE_PHLEBOTOMIST')")
+    @Operation(summary = "Get all screening records paginated")
+    public ResponseEntity<ApiResponse<?>> getAll(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(screeningService.getAll(page, size)));
+    }
+
     @GetMapping("/donor/{donorId}")
     @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "All screenings for a donor")

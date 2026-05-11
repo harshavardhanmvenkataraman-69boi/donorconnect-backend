@@ -6,6 +6,7 @@ import com.donorconnect.donorservice.enums.*;
 import com.donorconnect.donorservice.exception.ResourceNotFoundException;
 import com.donorconnect.donorservice.repository.*;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,6 +23,9 @@ public class DonorService {
 
     private final DonorRepository donorRepository;
 //    private final DonationRepository donationRepository;
+    private final ScreeningRecordRepository screeningRecordRepository;
+    private final DeferralRepository deferralRepository;
+    private final DonationAppointmentRepository donationAppointmentRepository;
 
     public Donor create(DonorRequest req) {
         log.info("Creating donor record for name={} bloodGroup={}", req.getName(), req.getBloodGroup());
@@ -48,6 +52,20 @@ public class DonorService {
 
     public List<Donor> searchByPhone(String phone) {
         return donorRepository.findByContactInfoContaining(phone);
+    }
+
+    @Transactional
+    public void deleteDonor(Long donorId, String reason) {
+        Donor donor = donorRepository.findById(donorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Donor", donorId));
+
+        screeningRecordRepository.deleteByDonorId(donorId);
+        deferralRepository.deleteByDonorId(donorId);
+        donationAppointmentRepository.deleteByDonorId(donorId);
+
+
+
+        donorRepository.delete(donor);
     }
 
     public Donor update(Long donorId, DonorRequest req) {
