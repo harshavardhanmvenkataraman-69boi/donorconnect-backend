@@ -91,8 +91,10 @@ public class InventoryService {
         if (newStatus == InventoryStatus.ISSUED || newStatus == InventoryStatus.DISPOSED) {
             balance.setQuantity(Math.max(0, balance.getQuantity() - 1));
         }
-        // Restore quantity if released from quarantine
-        if (prev == InventoryStatus.QUARANTINED && newStatus == InventoryStatus.AVAILABLE) {
+
+        // Restore quantity if released from quarantine or returned from issue
+        if ((prev == InventoryStatus.QUARANTINED && newStatus == InventoryStatus.AVAILABLE) ||
+                (prev == InventoryStatus.ISSUED && newStatus == InventoryStatus.AVAILABLE)) {
             balance.setQuantity(balance.getQuantity() + 1);
         }
 
@@ -160,15 +162,57 @@ public class InventoryService {
 
     @Transactional
     public StockTransactionResponse createTransaction(StockTransactionRequest request) {
+        // 1. Look up the inventory balance for this component
+        InventoryBalance balance = balanceRepo.findByComponentId(request.getComponentId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "InventoryBalance not found for componentId=" + request.getComponentId()));
+
+        // 2. Compute the signed delta this transaction applies to the balance.
+        //    Inflow types add stock; outflow types remove stock; neutral types don't move it.
+        int qty = request.getQuantity();
+        int delta = switch (request.getTxnType()) {
+            // Inflow — stock arrives or returns to AVAILABLE
+            case RECEIPT, RETURN, TRANSFER_IN, RELEASE -> qty;
+            // Outflow — stock leaves AVAILABLE
+            case ISSUE, TRANSFER_OUT, QUARANTINE       -> -qty;
+            // Neutral / manual — ADJUST is treated as a signed correction; the user
+            //                   passes a positive qty, and we accept it as-is. A
+            //                   future enhancement could allow signed quantities.
+            case ADJUST                                -> qty;
+        };
+
+        // 3. Reject outflows that would drive the balance negative
+        int newQty = balance.getQuantity() + delta;
+        if (newQty < 0) {
+            throw new IllegalStateException(
+                    "Insufficient stock for componentId=" + request.getComponentId() +
+                    " (available: " + balance.getQuantity() +
+                    ", requested: " + qty +
+                    ", txnType: " + request.getTxnType() + ")");
+        }
+
+        // 4. Apply the delta and persist the balance
+        balance.setQuantity(newQty);
+        // Status side-effects: if balance hits 0 via ISSUE, mark ISSUED
+        if (newQty == 0 && request.getTxnType() == TransactionType.ISSUE) {
+            balance.setStatus(InventoryStatus.ISSUED);
+        }
+        balanceRepo.save(balance);
+
+        // 5. Save the transaction record
         StockTransaction txn = StockTransaction.builder()
                 .componentId(request.getComponentId())
                 .txnType(request.getTxnType())
-                .quantity(request.getQuantity())
+                .quantity(qty)
                 .txnDate(request.getTxnDate() != null ? request.getTxnDate() : LocalDate.now())
                 .referenceId(request.getReferenceId())
                 .notes(request.getNotes())
                 .build();
-        return toTxnResponse(txnRepo.save(txn));
+        StockTransaction saved = txnRepo.save(txn);
+
+        log.info("Transaction recorded: componentId={}, type={}, qty={}, balanceAfter={}",
+                request.getComponentId(), request.getTxnType(), qty, newQty);
+        return toTxnResponse(saved);
     }
 
     public Page<StockTransactionResponse> getAllTransactions(Pageable pageable) {

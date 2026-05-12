@@ -6,6 +6,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication @EnableDiscoveryClient @EnableKafka @EnableScheduling
+@org.springframework.cloud.openfeign.EnableFeignClients
 public class ReportingServiceApplication {
     public static void main(String[] args) { SpringApplication.run(ReportingServiceApplication.class, args); }
 }

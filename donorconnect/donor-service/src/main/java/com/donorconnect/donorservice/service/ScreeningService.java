@@ -5,6 +5,11 @@ import com.donorconnect.donorservice.entity.ScreeningRecord;
 import com.donorconnect.donorservice.exception.ResourceNotFoundException;
 import com.donorconnect.donorservice.repository.ScreeningRecordRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
 import jakarta.transaction.Transactional;
 
 import lombok.RequiredArgsConstructor;
@@ -48,6 +53,12 @@ public class ScreeningService {
         }
 
         return saved;
+    }
+
+    public Page<ScreeningRecord> getAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by("screeningDate").descending());
+        return screeningRepo.findAll(pageable);
     }
 
     public ScreeningRecord getById(Long id) {
