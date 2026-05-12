@@ -23,9 +23,14 @@ public class AuditLog {
     private String action;
     private String resource;
 
+
+    // If I don't specifically set a value for this field during the build process,
+    // use the default value I provided in the class
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 
     @Column(columnDefinition = "TEXT")
     private String metadata;
 }
+
+// .build()	Finalizes the object creation.

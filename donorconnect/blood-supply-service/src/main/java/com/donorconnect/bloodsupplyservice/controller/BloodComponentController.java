@@ -1,7 +1,5 @@
 package com.donorconnect.bloodsupplyservice.controller;
 
-
-
 import com.donorconnect.bloodsupplyservice.dto.request.BloodComponentRequest;
 import com.donorconnect.bloodsupplyservice.enums.ComponentStatus;
 import com.donorconnect.bloodsupplyservice.enums.ComponentType;
@@ -16,7 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/components")
+@RequestMapping("/api/v1/components")
 @RequiredArgsConstructor
 @Tag(name = "Blood Components", description = "Blood component processing and management")
 public class BloodComponentController {

@@ -11,6 +11,7 @@ import java.util.List;
 public interface DonationAppointmentRepository extends JpaRepository<DonationAppointment, Long> {
     List<DonationAppointment> findByDonorId(Long donorId);
     List<DonationAppointment> findByDriveId(Long driveId);
+    void deleteByDonorId(Long donorId);
     List<DonationAppointment> findByDateTimeBetween(LocalDateTime start, LocalDateTime end);
     boolean existsByDonorIdAndDateTimeBetween(Long donorId,LocalDateTime start,LocalDateTime end);
 }

@@ -2,6 +2,7 @@ package com.donorconnect.donorservice.controller;
 
 import com.donorconnect.donorservice.dto.request.DonorRequest;
 import com.donorconnect.donorservice.dto.response.ApiResponse;
+import com.donorconnect.donorservice.entity.Donor;
 import com.donorconnect.donorservice.enums.*;
 import com.donorconnect.donorservice.service.DonorService;
 
@@ -17,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/donors")
 @RequiredArgsConstructor
@@ -24,14 +27,33 @@ import org.springframework.web.bind.annotation.*;
 public class DonorController {
 
     private final DonorService donorService;
-    // private final DonationService donationService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_LAB_TECHNICIAN','ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Register new donor")
     public ResponseEntity<ApiResponse<?>> create(@RequestBody DonorRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Donor registered", donorService.create(request)));
     }
+
+    @GetMapping("/search/phone")
+    public ResponseEntity<?> searchByPhone(@RequestParam String phone) {
+        List<Donor> donors = donorService.searchByPhone(phone);
+        return ResponseEntity.ok(
+                ApiResponse.success(donors)
+        );
+    }
+
+    @DeleteMapping("/{donorId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Delete a donor record (admin only)")
+    public ResponseEntity<ApiResponse<?>> deleteDonor(
+            @PathVariable Long donorId,
+            @RequestParam(required = false) String reason) {
+        donorService.deleteDonor(donorId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Donor record deleted successfully", null));
+    }
+
+
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
@@ -42,7 +64,7 @@ public class DonorController {
     }
 
     @GetMapping("/{donorId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN','ROLE_PHLEBOTOMIST')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN','ROLE_PHLEBOTOMIST','ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "Get donor by ID")
     public ResponseEntity<ApiResponse<?>> getById(@PathVariable Long donorId) {
         return ResponseEntity.ok(ApiResponse.success(donorService.getById(donorId)));
