@@ -44,18 +44,22 @@ public class JwtTokenProvider {
         if (authentication.getPrincipal() instanceof User user) {
             userId = String.valueOf(user.getUserId());
         }
-        // it checks logged in user is an instance of User entity and grabs their database userId
+        // it checks logged in user is an instance of User entity and
+        // grabs their database userId
 
         return Jwts.builder()
                 .setSubject(username) // set email(owner of token)
                 // like for eg if a user has two roles so roles would be the list of both the roles and primaryRole will be the main role
                 .claim("roles", roles)   // puts the role inside token so gateway can read them without asking database
                 .claim("role", primaryRole)     
-                .claim("userId", userId)     // ads database id inside token
+                .claim("userId", userId)     // adds database id inside token
                 .setIssuedAt(now) // exact time
                 .setExpiration(expiry) // expiration time
+                // hs256 works only with byte array not with string so for this,
+//                key must be of 256 bits (32 characters long)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                // It signs the data using your secret key. If a hacker changes a single letter in the token, the signature will no longer match, and the token will be rejected
+                // It signs the data using your secret key. If a hacker changes a single
+                // letter in the token, the signature will no longer match, and the token will be rejected
                 .compact();
         // Squashes all this data into the final, long "base64" string that you see in Postman
     }

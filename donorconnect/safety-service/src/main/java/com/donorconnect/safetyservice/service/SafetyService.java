@@ -10,15 +10,18 @@ import com.donorconnect.safetyservice.repository.*;
 
 import lombok.RequiredArgsConstructor;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SafetyService {
 
     private final ReactionRepository reactionRepository;
@@ -109,5 +112,56 @@ public class SafetyService {
 
     public List<LookbackTrace> getByComponent(Long componentId) {
         return lookbackTraceRepository.findByComponentId(componentId);
+    }
+
+    // NEW — get componentId from issueId
+    // BloodIssueClient calls: /transfusion/api/v1/issue/{issueId}
+    // IssueRecord fields: issueId, componentId, patientId, ...
+    // FIX: Jackson deserializes numbers as Integer, use Number.longValue() not Long.valueOf()
+    public Long getComponentIdByIssue(Long issueId) {
+        ApiResponse<?> response = bloodIssueClient.getIssueById(issueId);
+        if (!response.isSuccess()) {
+            throw new ServiceUnavailableException(
+                    "Transfusion service is currently unavailable. Please try again later.");
+        }
+        Long componentId = extractLongField(response.getData(), "componentId");
+        if (componentId == null) {
+            log.error("componentId not found in issue response for issueId={}: {}", issueId, response.getData());
+            throw new ResourceNotFoundException("ComponentId for Issue", issueId);
+        }
+        log.info("Fetched componentId={} for issueId={}", componentId, issueId);
+        return componentId;
+    }
+
+    // NEW — get donationId from componentId
+    // BloodComponentClient calls: /api/v1/components/{componentId}
+    // BloodComponent fields: componentId, donationId, componentType, ...
+    public Long getDonationIdByComponent(Long componentId) {
+        ApiResponse<?> response = bloodComponentClient.getById(componentId);
+        if (!response.isSuccess()) {
+            throw new ServiceUnavailableException(
+                    "Blood supply service is currently unavailable. Please try again later.");
+        }
+        Long donationId = extractLongField(response.getData(), "donationId");
+        if (donationId == null) {
+            log.error("donationId not found in component response for componentId={}: {}", componentId, response.getData());
+            throw new ResourceNotFoundException("DonationId for Component", componentId);
+        }
+        log.info("Fetched donationId={} for componentId={}", donationId, componentId);
+        return donationId;
+    }
+
+    // Helper — safely extracts a Long from a Map returned by Feign
+    // Jackson deserializes JSON numbers as Integer (if value fits) or Long
+    // Using Number.longValue() handles both cases safely
+    @SuppressWarnings("unchecked")
+    private Long extractLongField(Object data, String fieldName) {
+        if (data instanceof Map<?, ?> dataMap) {
+            Object value = ((Map<String, Object>) dataMap).get(fieldName);
+            if (value instanceof Number number) {
+                return number.longValue();
+            }
+        }
+        return null;
     }
 }

@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // it verifies whether the token is valid or not
         if (StringUtils.hasText(token) && tokenProvider.validateToken(token)) {
-            // if token is valid username (email) will be extracted from tokens payload
+            // if token is valid, username (email) will be extracted from tokens payload
             String username = tokenProvider.getUsernameFromToken(token);
 
             // it is calling this loadByUsername thing to get latest user details (roles,status)
@@ -49,6 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // password is null as already proved user's identity
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            // extra info like users ip address so that as to hacker your logs will show mismatch
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
         }

@@ -11,7 +11,7 @@ contextId = "DonationClient",
 fallback = DonationFallback.class)
 public interface DonationClient {
 
-    @GetMapping("/api/v1/donations//{donationId}")
+    @GetMapping("/api/v1/donations/{donationId}")
     ApiResponse<?> getById(@PathVariable Long donationId);
 
 }
