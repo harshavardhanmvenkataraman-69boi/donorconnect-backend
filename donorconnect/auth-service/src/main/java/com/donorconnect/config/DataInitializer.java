@@ -50,4 +50,8 @@ public class DataInitializer implements CommandLineRunner {
         log.info("  CHANGE THIS PASSWORD AFTER FIRST LOGIN");
         log.info("========================================");
     }
+<<<<<<< Updated upstream
 }
+=======
+}
+>>>>>>> Stashed changes
