@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class DataInitializer implements CommandLineRunner {
 
-    private final UserRepository  userRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -50,8 +50,4 @@ public class DataInitializer implements CommandLineRunner {
         log.info("  CHANGE THIS PASSWORD AFTER FIRST LOGIN");
         log.info("========================================");
     }
-<<<<<<< Updated upstream
 }
-=======
-}
->>>>>>> Stashed changes
