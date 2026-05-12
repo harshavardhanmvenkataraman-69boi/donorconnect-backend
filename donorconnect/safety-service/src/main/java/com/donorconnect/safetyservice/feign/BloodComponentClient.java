@@ -13,4 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 public interface BloodComponentClient {
     @GetMapping("/api/v1/components/{componentId}")
     ApiResponse<?> getById(@PathVariable Long componentId);
+
+    @GetMapping("/api/v1/components/donation/{donationId}")
+    ApiResponse<?> getByDonationId(@PathVariable Long donationId);
 }

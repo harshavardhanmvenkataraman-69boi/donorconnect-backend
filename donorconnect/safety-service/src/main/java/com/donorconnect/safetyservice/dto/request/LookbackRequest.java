@@ -12,4 +12,5 @@ public class LookbackRequest {
     private Long componentId;
     @NotNull private Long patientId;
     private LocalDate traceDate;
+    private Long reactionId;
 }
