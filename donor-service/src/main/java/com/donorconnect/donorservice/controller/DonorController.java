@@ -1,0 +1,116 @@
+package com.donorconnect.donorservice.controller;
+
+import com.donorconnect.donorservice.dto.request.DonorRequest;
+import com.donorconnect.donorservice.dto.response.ApiResponse;
+import com.donorconnect.donorservice.entity.Donor;
+import com.donorconnect.donorservice.enums.*;
+import com.donorconnect.donorservice.service.DonorService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/donors")
+@RequiredArgsConstructor
+@Tag(name = "Donors", description = "Donor registration and management")
+public class DonorController {
+
+    private final DonorService donorService;
+
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_LAB_TECHNICIAN','ROLE_RECEPTION','ROLE_ADMIN')")
+    @Operation(summary = "Register new donor")
+    public ResponseEntity<ApiResponse<?>> create(@RequestBody DonorRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Donor registered", donorService.create(request)));
+    }
+
+    @GetMapping("/search/phone")
+    public ResponseEntity<?> searchByPhone(@RequestParam String phone) {
+        List<Donor> donors = donorService.searchByPhone(phone);
+        return ResponseEntity.ok(
+                ApiResponse.success(donors)
+        );
+    }
+
+    @DeleteMapping("/{donorId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Delete a donor record (admin only)")
+    public ResponseEntity<ApiResponse<?>> deleteDonor(
+            @PathVariable Long donorId,
+            @RequestParam(required = false) String reason) {
+        donorService.deleteDonor(donorId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Donor record deleted successfully", null));
+    }
+
+
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
+    @Operation(summary = "Get all donors (paginated)")
+    public ResponseEntity<ApiResponse<?>> getAll(
+            @ParameterObject @PageableDefault(size = 20, sort = "donorId") Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(donorService.getAll(pageable)));
+    }
+
+    @GetMapping("/{donorId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN','ROLE_PHLEBOTOMIST','ROLE_LAB_TECHNICIAN')")
+    @Operation(summary = "Get donor by ID")
+    public ResponseEntity<ApiResponse<?>> getById(@PathVariable Long donorId) {
+        return ResponseEntity.ok(ApiResponse.success(donorService.getById(donorId)));
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
+    @Operation(summary = "Search donors by name or blood group")
+    public ResponseEntity<ApiResponse<?>> search(
+            @RequestParam(required = false) String name,
+            @RequestParam(name = "blood-group", required = false) String bloodGroup) {
+        return ResponseEntity.ok(ApiResponse.success(donorService.search(name, bloodGroup)));
+    }
+
+    @PutMapping("/{donorId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
+    @Operation(summary = "Update donor info")
+    public ResponseEntity<ApiResponse<?>> update(@PathVariable Long donorId,
+                                                 @RequestBody DonorRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Donor updated", donorService.update(donorId, request)));
+    }
+
+    @PutMapping("/{donorId}/status")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Change donor status")
+    public ResponseEntity<ApiResponse<?>> updateStatus(@PathVariable Long donorId,
+                                                       @RequestParam DonorStatus status) {
+        if (status == DonorStatus.ACTIVE || status == DonorStatus.DEFERRED) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.error("ACTIVE and DEFERRED statuses are managed automatically by the system.")
+            );
+        }
+        return ResponseEntity.ok(ApiResponse.success("Status updated", donorService.updateStatus(donorId, status)));
+    }
+
+    @GetMapping("/blood-group/{bloodGroup}")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
+    @Operation(summary = "Filter donors by blood group")
+    public ResponseEntity<ApiResponse<?>> getByBloodGroup(@PathVariable String bloodGroup) {
+        return ResponseEntity.ok(ApiResponse.success(donorService.getByBloodGroup(bloodGroup)));
+    }
+
+    @GetMapping("/type/{donorType}")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
+    @Operation(summary = "Filter donors by type")
+    public ResponseEntity<ApiResponse<?>> getByType(@PathVariable DonorType donorType) {
+        return ResponseEntity.ok(ApiResponse.success(donorService.getByType(donorType)));
+    }
+}

@@ -1,0 +1,45 @@
+# Java / Maven build output
+**/target/
+**/build/
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs / runtime
+*.log
+logs/
+**/logs/
+*.pid
+hs_err_pid*
+replay_pid*
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+.factorypath
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local env/secrets (keep examples tracked)
+.env
+.env.*
+!.env.example
+
+# Optional local Spring profile overrides (if you use them)
+**/application-local.properties
+**/application-local.yml
+**/application-dev-local.properties
+**/application-dev-local.yml
+
+# Temp files
+tmp/
+temp/
+*.tmp
