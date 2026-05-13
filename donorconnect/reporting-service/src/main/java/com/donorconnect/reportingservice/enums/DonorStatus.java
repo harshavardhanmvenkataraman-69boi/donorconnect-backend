@@ -1,2 +1,2 @@
 package com.donorconnect.reportingservice.enums;
-public enum DonorStatus { ACTIVE, DEFERRED, INACTIVE }
+public enum DonorStatus { ACTIVE, DEFERRED, INACTIVE, BLACKLISTED }

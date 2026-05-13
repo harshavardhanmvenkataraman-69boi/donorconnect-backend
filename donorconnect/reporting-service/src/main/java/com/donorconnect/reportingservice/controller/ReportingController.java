@@ -75,6 +75,12 @@ public class ReportingController {
         return ResponseEntity.ok(ApiResponse.success(service.getUtilization()));
     }
 
+    @GetMapping("/adverse-reactions")
+    @Operation(summary = "Adverse reaction summary from safety-service")
+    public ResponseEntity<ApiResponse<?>> adverseReactions() {
+        return ResponseEntity.ok(ApiResponse.success(service.getAdverseReactionSummary()));
+    }
+
     @PostMapping("/generate")
     @Operation(summary = "Manually trigger report generation")
     public ResponseEntity<ApiResponse<?>> generate(
