@@ -196,6 +196,8 @@
 
 package com.donorconnect.service;
 
+
+
 import com.donorconnect.dto.request.auth.*;
 import com.donorconnect.entity.auth.AuditLog;
 import com.donorconnect.entity.auth.User;
@@ -226,6 +228,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
+    private final EmailService emailService;
 
     private final Map<String, String> resetTokens = new HashMap<>();
 
@@ -300,11 +303,12 @@ public class AuthService {
     }
 
     public String forgotPassword(String email) {
-        userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
         String token = UUID.randomUUID().toString();
         resetTokens.put(token, email);
-        return "Reset token generated. Token: " + token;
+        emailService.sendPasswordResetToken(email, user.getName(), token);
+        return "If an account exists for that email, a reset token has been sent to it.";
     }
 
     public String resetPassword(ResetPasswordRequest req) {
