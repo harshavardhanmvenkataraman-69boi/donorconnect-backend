@@ -55,10 +55,30 @@ public class TestResultController {
         return ResponseEntity.ok(ApiResponse.success(testResultService.getReactive()));
     }
 
+    @GetMapping("/non-reactive")
+    @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_ADMIN')")
+    @Operation(summary = "All non-reactive (COMPLETED) results")
+    public ResponseEntity<ApiResponse<?>> getNonReactive() {
+        return ResponseEntity.ok(ApiResponse.success(testResultService.getNonReactive()));
+    }
+
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_ADMIN')")
     @Operation(summary = "All pending results")
     public ResponseEntity<ApiResponse<?>> getPending() {
         return ResponseEntity.ok(ApiResponse.success(testResultService.getPending()));
+    }
+
+    @PostMapping("/bulk")
+    @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_ADMIN')")
+    @Operation(summary = "Submit all required tests for a donation in one call",
+            description = "Convenience endpoint for demo / fast data entry. Accepts a donationId, "
+                    + "enteredBy, and a map of testType -> result. Saves one TestResult per entry. "
+                    + "If ANY result is REACTIVE, the standard reactive pipeline (quarantine + deferral) fires.")
+    public ResponseEntity<ApiResponse<?>> createBulk(
+            @RequestBody com.donorconnect.bloodsupplyservice.dto.request.BulkTestResultRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Bulk test results saved",
+                testResultService.createBulk(request)));
     }
 }

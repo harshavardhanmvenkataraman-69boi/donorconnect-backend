@@ -44,6 +44,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(e.getMessage(), "RESOURCE_NOT_FOUND", e.getResourceId()));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalStateException(IllegalStateException e) {
+        // Used for validation failures: duplicate components, volume overflow,
+        // status transitions that aren't allowed, etc.
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(e.getMessage(), "ILLEGAL_STATE", null));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleGenericException(Exception e) {
         return ResponseEntity

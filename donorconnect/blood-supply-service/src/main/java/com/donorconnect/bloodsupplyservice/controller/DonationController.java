@@ -4,6 +4,7 @@ import com.donorconnect.bloodsupplyservice.dto.request.DonationRequest;
 import com.donorconnect.bloodsupplyservice.dto.response.ApiResponse;
 import com.donorconnect.bloodsupplyservice.enums.CollectionStatus;
 import com.donorconnect.bloodsupplyservice.service.DonationService;
+import com.donorconnect.bloodsupplyservice.service.TestResultService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -19,16 +20,17 @@ import org.springframework.web.bind.annotation.*;
 public class DonationController {
 
     private final DonationService donationService;
+    private final TestResultService testResultService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN', 'ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "Start donation collection")
     public ResponseEntity<ApiResponse<?>> create(@RequestBody DonationRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Donation recorded", donationService.create(request)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN', 'ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "All donations (paginated)")
     public ResponseEntity<ApiResponse<?>> getAll(
             @RequestParam(defaultValue = "0") int page,
@@ -44,14 +46,14 @@ public class DonationController {
     }
 
     @GetMapping("/donor/{donorId}")
-    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN', 'ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "Donations by donor")
     public ResponseEntity<ApiResponse<?>> getByDonor(@PathVariable Long donorId) {
         return ResponseEntity.ok(ApiResponse.success(donationService.getByDonor(donorId)));
     }
 
     @PutMapping("/{donationId}")
-    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN', 'ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "Update donation")
     public ResponseEntity<ApiResponse<?>> update(@PathVariable Long donationId,
                                                  @RequestBody DonationRequest request) {
@@ -59,7 +61,7 @@ public class DonationController {
     }
 
     @PatchMapping("/{donationId}/status")
-    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN', 'ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "Update collection status")
     public ResponseEntity<ApiResponse<?>> updateStatus(@PathVariable Long donationId,
                                                        @RequestParam CollectionStatus status) {
@@ -67,9 +69,18 @@ public class DonationController {
     }
 
     @GetMapping("/bag/{bagId}")
-    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_LAB_TECHNICIAN','ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN', 'ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "Find donation by bag ID")
     public ResponseEntity<ApiResponse<?>> getByBagId(@PathVariable String bagId) {
         return ResponseEntity.ok(ApiResponse.success(donationService.getByBagId(bagId)));
+    }
+
+    @GetMapping("/{donationId}/component-readiness")
+    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN','ROLE_LAB_TECHNICIAN','ROLE_INVENTORY_CONTROLLER')")
+    @Operation(summary = "Whether a donation can have components registered",
+            description = "Returns ready=true ONLY if all 7 mandatory tests are entered and none are reactive. "
+                    + "If ready=false, the payload's reason field explains why (INCOMPLETE or REACTIVE).")
+    public ResponseEntity<ApiResponse<?>> getComponentReadiness(@PathVariable Long donationId) {
+        return ResponseEntity.ok(ApiResponse.success(testResultService.getComponentReadiness(donationId)));
     }
 }

@@ -15,6 +15,7 @@ import java.util.List;
 public interface DonorRepository extends JpaRepository<Donor, Long> {
     List<Donor> findByBloodGroup(String bloodGroup);
     List<Donor> findByDonorType(DonorType donorType);
+    List<Donor> findByContactInfoContaining(String contactInfo);
     @Query("SELECT d FROM Donor d WHERE (:name IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%',:name,'%'))) AND (:bloodGroup IS NULL OR d.bloodGroup = :bloodGroup)")
     List<Donor> searchDonors(@Param("name") String name,
                              @Param("bloodGroup") String bloodGroup);
