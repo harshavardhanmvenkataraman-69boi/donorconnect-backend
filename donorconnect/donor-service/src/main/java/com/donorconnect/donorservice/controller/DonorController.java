@@ -27,10 +27,9 @@ import java.util.List;
 public class DonorController {
 
     private final DonorService donorService;
-    // private final DonationService donationService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_LAB_TECHNICIAN','ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Register new donor")
     public ResponseEntity<ApiResponse<?>> create(@RequestBody DonorRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Donor registered", donorService.create(request)));
@@ -44,6 +43,18 @@ public class DonorController {
         );
     }
 
+    @DeleteMapping("/{donorId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Delete a donor record (admin only)")
+    public ResponseEntity<ApiResponse<?>> deleteDonor(
+            @PathVariable Long donorId,
+            @RequestParam(required = false) String reason) {
+        donorService.deleteDonor(donorId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Donor record deleted successfully", null));
+    }
+
+
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "Get all donors (paginated)")
@@ -53,7 +64,7 @@ public class DonorController {
     }
 
     @GetMapping("/{donorId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN','ROLE_PHLEBOTOMIST')")
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN','ROLE_PHLEBOTOMIST','ROLE_LAB_TECHNICIAN')")
     @Operation(summary = "Get donor by ID")
     public ResponseEntity<ApiResponse<?>> getById(@PathVariable Long donorId) {
         return ResponseEntity.ok(ApiResponse.success(donorService.getById(donorId)));

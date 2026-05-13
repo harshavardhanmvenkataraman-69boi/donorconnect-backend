@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 
-// this class is the one that provided the data as this is the class that is bridge between your database and security
+// this class is the one that provides the data as this is the class that is bridge between your database and security
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
