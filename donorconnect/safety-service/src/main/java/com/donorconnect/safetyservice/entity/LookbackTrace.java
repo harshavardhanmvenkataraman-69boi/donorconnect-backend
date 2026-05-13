@@ -1,5 +1,6 @@
 package com.donorconnect.safetyservice.entity;
 
+import com.donorconnect.safetyservice.enums.LookbackStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,6 +29,8 @@ public class LookbackTrace {
 
     private LocalDate traceDate;
 
+    // LookbackStatus: OPEN → TRACED → CLOSED
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    private String status = "ACTIVE";
+    private LookbackStatus status = LookbackStatus.OPEN;
 }

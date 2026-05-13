@@ -3,6 +3,7 @@ package com.donorconnect.safetyservice.controller;
 import com.donorconnect.safetyservice.dto.request.LookbackRequest;
 import com.donorconnect.safetyservice.dto.request.ReactionRequest;
 import com.donorconnect.safetyservice.dto.response.ApiResponse;
+import com.donorconnect.safetyservice.enums.LookbackStatus;
 import com.donorconnect.safetyservice.enums.ReactionStatus;
 import com.donorconnect.safetyservice.enums.Severity;
 import com.donorconnect.safetyservice.service.SafetyService;
@@ -20,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/safety")   // ← FIX: was missing, methods had full paths hardcoded
+@RequestMapping("/api/v1/safety")
 @RequiredArgsConstructor
 @Tag(name = "Reactions & Lookback", description = "Adverse reactions and donor traceability")
 public class SafetyController {
@@ -31,7 +32,7 @@ public class SafetyController {
 
     @PostMapping("/reactions")
     @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
-    @Operation(summary = "Log adverse reaction")
+    @Operation(summary = "Log adverse reaction — status starts PENDING")
     public ResponseEntity<ApiResponse<?>> createReaction(@RequestBody ReactionRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Reaction logged", reactionService.create(request)));
     }
@@ -74,9 +75,11 @@ public class SafetyController {
         return ResponseEntity.ok(ApiResponse.success("Reaction updated", reactionService.update(reactionId, request)));
     }
 
+    // Manual status update — Admin closes investigation
+    // PENDING → INVESTIGATING (auto on lookback) → CLOSED (manual by admin)
     @PatchMapping("/reactions/{reactionId}/status")
     @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
-    @Operation(summary = "Update investigation status")
+    @Operation(summary = "Update reaction status — PENDING / INVESTIGATING / CLOSED")
     public ResponseEntity<ApiResponse<?>> updateReactionStatus(@PathVariable Long reactionId,
                                                                @RequestParam ReactionStatus status) {
         return ResponseEntity.ok(ApiResponse.success("Status updated", reactionService.updateStatus(reactionId, status)));
@@ -84,49 +87,76 @@ public class SafetyController {
 
     // --- LOOKBACK ---
 
+    // Initiate → saves trace with TRACED status + auto-updates reaction to INVESTIGATING
     @PostMapping("/lookback")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @Operation(summary = "Create lookback trace")
+    @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
+    @Operation(summary = "Initiate lookback trace — LookbackStatus=TRACED, Reaction→INVESTIGATING")
     public ResponseEntity<ApiResponse<?>> createLookbackTrace(@RequestBody LookbackRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Trace created", reactionService.createTrace(request)));
     }
 
     @GetMapping("/lookback/donation/{donationId}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
     @Operation(summary = "Trace all components from a donation")
     public ResponseEntity<ApiResponse<?>> getLookbackByDonation(@PathVariable Long donationId) {
         return ResponseEntity.ok(ApiResponse.success(reactionService.getByDonation(donationId)));
     }
 
     @GetMapping("/lookback/patient/{patientId}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
     @Operation(summary = "All donations received by a patient")
     public ResponseEntity<ApiResponse<?>> getLookbackByPatient(@PathVariable Long patientId) {
         return ResponseEntity.ok(ApiResponse.success(reactionService.getLookbackByPatient(patientId)));
     }
 
     @GetMapping("/lookback/component/{componentId}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
     @Operation(summary = "Trace a specific component")
     public ResponseEntity<ApiResponse<?>> getLookbackByComponent(@PathVariable Long componentId) {
         return ResponseEntity.ok(ApiResponse.success(reactionService.getByComponent(componentId)));
     }
 
-    // NEW — get componentId from issueId via BloodIssueClient Feign
-    // Called by frontend to build the lookback chain from a reaction row
-    // GET /api/safety/issue-component/{issueId} → { componentId: 17 }
-    @GetMapping("/issue-component/{issueId}")
+    @GetMapping("/lookback/exists/patient/{patientId}")
+    @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
+    @Operation(summary = "Check if lookback exists for a patient")
+    public ResponseEntity<ApiResponse<?>> lookbackExistsForPatient(@PathVariable Long patientId) {
+        var traces = reactionService.getTracesByPatient(patientId);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "exists", !traces.isEmpty(),
+                "traces", traces
+        )));
+    }
+
+    // Admin closes lookback trace — TRACED → CLOSED
+    @PatchMapping("/lookback/{traceId}/status")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(summary = "Update lookback trace status — Admin only (OPEN / TRACED / CLOSED)")
+    public ResponseEntity<ApiResponse<?>> updateLookbackStatus(@PathVariable Long traceId,
+                                                               @RequestParam LookbackStatus status) {
+        return ResponseEntity.ok(ApiResponse.success("Lookback status updated",
+                reactionService.updateLookbackStatus(traceId, status)));
+    }
+
+    // Full investigation — ADMIN ONLY
+    @GetMapping("/lookback-details/{donationId}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(summary = "Full lookback investigation — donor + all components (Admin only)")
+    public ResponseEntity<ApiResponse<?>> getLookbackDetails(@PathVariable Long donationId) {
+        return ResponseEntity.ok(ApiResponse.success(reactionService.getLookbackDetails(donationId)));
+    }
+
+    // --- LOOKUP HELPERS ---
+
+    @GetMapping("/issue-component/{issueId}")
+    @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
     @Operation(summary = "Get component ID for a given issue record")
     public ResponseEntity<ApiResponse<?>> getComponentIdByIssue(@PathVariable Long issueId) {
         Long componentId = reactionService.getComponentIdByIssue(issueId);
         return ResponseEntity.ok(ApiResponse.success(Map.of("componentId", componentId)));
     }
 
-    // NEW — get donationId from componentId via BloodComponentClient Feign
-    // GET /api/safety/component-donation/{componentId} → { donationId: 3 }
     @GetMapping("/component-donation/{componentId}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_TRANSFUSION_OFFICER','ROLE_ADMIN')")
     @Operation(summary = "Get donation ID for a given component")
     public ResponseEntity<ApiResponse<?>> getDonationIdByComponent(@PathVariable Long componentId) {
         Long donationId = reactionService.getDonationIdByComponent(componentId);
