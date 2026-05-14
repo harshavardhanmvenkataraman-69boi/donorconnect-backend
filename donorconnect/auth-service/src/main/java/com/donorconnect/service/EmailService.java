@@ -18,6 +18,7 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
+    // it pull the email from properties file so that email knows who the sender is
     @Value("${spring.mail.username}")
     private String fromEmail;
 

@@ -278,14 +278,21 @@ public class AuthService {
             throw new UserAlreadyExistsException("An account with email " + req.getEmail() + " already exists.");
         }
         User user = User.builder()
-                .name(req.getName()).email(req.getEmail()).phone(req.getPhone())
+                .name(req.getName()).
+                email(req.getEmail()).
+                phone(req.getPhone())
                 .password(passwordEncoder.encode(req.getPassword()))
-                .role(req.getRole()).status(UserStatus.ACTIVE).build();
+                .role(req.getRole())
+                .status(UserStatus.ACTIVE)
+                .build();
         User saved = userRepository.save(user);
         auditLogRepository.save(AuditLog.builder()
-                .userId(saved.getUserId()).userName(saved.getName())
-                .userRole(saved.getRole().name()).action("USER_CREATED")
-                .resource("User").timestamp(java.time.LocalDateTime.now()).build());
+                .userId(saved.getUserId())
+                .userName(saved.getName())
+                .userRole(saved.getRole().name())
+                .action("USER_CREATED")
+                .resource("User")
+                .timestamp(java.time.LocalDateTime.now()).build());
         return saved;
     }
 
@@ -297,14 +304,19 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
         auditLogRepository.save(AuditLog.builder()
-                .userId(user.getUserId()).userName(user.getName())
-                .userRole(user.getRole().name()).action("PASSWORD_CHANGE")
-                .resource("User").timestamp(java.time.LocalDateTime.now()).build());
+                .userId(user.getUserId()).
+                userName(user.getName())
+                .userRole(user.getRole().name())
+                .action("PASSWORD_CHANGE")
+                .resource("User")
+                .timestamp(java.time.LocalDateTime.now()).build());
     }
 
     public String forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        //Universally Unique Identifier(128 bit number system), a random/unique string
+        // it acts as a one-time secure key that bridges the gap between the user's email inbox and your serve
         String token = UUID.randomUUID().toString();
         resetTokens.put(token, email);
         emailService.sendPasswordResetToken(email, user.getName(), token);
@@ -317,9 +329,13 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
         auditLogRepository.save(AuditLog.builder()
-                .userId(user.getUserId()).userName(user.getName())
-                .userRole(user.getRole().name()).action("PASSWORD_RESET")
-                .resource("User").timestamp(java.time.LocalDateTime.now()).build());
+                .userId(user.getUserId())
+                .userName(user.getName())
+                .userRole(user.getRole().name())
+                .action("PASSWORD_RESET")
+                .resource("User")
+                .timestamp(java.time.LocalDateTime.now())
+                .build());
         return "Password reset successful";
     }
 
@@ -327,9 +343,13 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
         auditLogRepository.save(AuditLog.builder()
-                .userId(user.getUserId()).userName(user.getName())
-                .userRole(user.getRole().name()).action("LOGOUT")
-                .resource("User").timestamp(java.time.LocalDateTime.now()).build());
+                .userId(user.getUserId())
+                .userName(user.getName())
+                .userRole(user.getRole().name())
+                .action("LOGOUT")
+                .resource("User")
+                .timestamp(java.time.LocalDateTime.now())
+                .build());
     }
 
     public Page<User> getAllUsers(Pageable pageable) {
