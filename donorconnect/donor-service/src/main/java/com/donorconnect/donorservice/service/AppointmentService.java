@@ -59,6 +59,20 @@ public class AppointmentService {
         if(req.getDriveId()!=null){
             Drive drive=driveRepository.findById(req.getDriveId())
                     .orElseThrow(()-> new ResourceNotFoundException("Drive",req.getDriveId()) );
+
+            if (drive.getCapacity() != null) {
+                long bookedCount = appointmentRepository
+                        .countByDriveIdAndStatusNotIn(
+                                req.getDriveId(),
+                                List.of(AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW)
+                        );
+
+                if (bookedCount >= drive.getCapacity()) {
+                    throw new IllegalStateException(
+                            "Drive is fully booked. Capacity: " + drive.getCapacity()
+                    );
+                }
+            }
         }
 
         DonationAppointment a = DonationAppointment.builder()
