@@ -21,6 +21,7 @@ import java.io.IOException;
 
 @Component // automatically creates bean means object
 @RequiredArgsConstructor
+// OncePerRequestFilter -> in one request any filter should not run twice
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;

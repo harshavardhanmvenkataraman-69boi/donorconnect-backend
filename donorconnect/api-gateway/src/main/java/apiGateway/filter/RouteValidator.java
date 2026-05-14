@@ -16,18 +16,15 @@ public class RouteValidator {
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
             "/api/v1/auth/validate-reset-token",
+
             // Frontend /api/auth/** patterns (before Gateway rewrites them)
             "/api/auth/setup-admin",
             "/api/auth/login",
             "/api/auth/forgot-password",
             "/api/auth/reset-password",
+
             // Health and docs
-            "/actuator/health",
-            "/swagger-ui",
-            "/swagger-ui.html",
-            "/v1/api-docs",
-            "/api-docs",
-            "/swagger-resources"
+            "/actuator/health"
     );
 
     public boolean isOpenEndpoint(ServerHttpRequest request) {
@@ -36,3 +33,6 @@ public class RouteValidator {
                 .anyMatch(path::startsWith);
     }
 }
+
+// Example: If your list has /api/auth/login and the user calls /api/auth/login?user=test,
+// the path "starts with" the allowed string, so it returns TRUE.
