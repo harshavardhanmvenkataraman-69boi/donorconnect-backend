@@ -36,14 +36,17 @@ public class CorsConfig {
         //OPTIONS -> Pre flight request, browser sends before sending the actual data
         // are you going to allow a react app from localhost 3000 to talk to you
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        config.setAllowedHeaders(Arrays.asList("*")); //  allow all headers, you can specify which headers you want to allow
+        config.setAllowedHeaders(Arrays.asList("*"));
+        //  allow all headers, you can specify which headers you want to allow
         // headers -> (Content-Type: Telling the server "I'm sending JSON.)
         //         -> (Authorization: Carrying the JWT Token so the server knows who you are)
         config.setAllowCredentials(true);
-        config.setMaxAge(3600L); // it means a browser doesn't have to send a pre flight request for every single api call you make in this 1 hour
+        config.setMaxAge(3600L);
+        // it means a browser doesn't have to send a pre flight request for every single api call you make in this 1 hour
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config); // this applies these rules to every single endpoint in the gateway
+        source.registerCorsConfiguration("/**", config);
+        // this applies these rules to every single endpoint in the gateway
         return new CorsWebFilter(source);
     }
 
@@ -88,3 +91,11 @@ public class CorsConfig {
 }
 
 
+//Your Gateway is configured to send CORS headers (to allow your React app to talk to it).
+//Sometimes, your Auth Service is also configured to send CORS headers.
+//When the response comes back to the browser, it might have two of every header:
+//Access-Control-Allow-Origin: http://localhost:5173
+//Access-Control-Allow-Origin: http://localhost:5173
+//The Problem: Browsers hate this. If they see a duplicate CORS header,
+// they consider it a security risk and block the whole request. Dedupe ensures that
+// if there are two or more identical headers, we "wipe" the extras and keep only one

@@ -20,9 +20,10 @@ public class JwtUtil {
     }
 //    HMAC is an algo that converts your secret string into mathematical secret key
 //    object that is used by library to verify signature
+    // it works only with bytes array (256 bits)(32 characters long)
 
     public void validateToken(String token) {
-        Jwts.parser()
+        Jwts.parser() // hot to slice token into three parts(header,payload,signature)
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token);
