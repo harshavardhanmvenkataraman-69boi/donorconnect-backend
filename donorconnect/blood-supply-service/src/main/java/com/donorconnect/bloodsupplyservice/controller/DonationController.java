@@ -4,6 +4,7 @@ import com.donorconnect.bloodsupplyservice.dto.request.DonationRequest;
 import com.donorconnect.bloodsupplyservice.dto.response.ApiResponse;
 import com.donorconnect.bloodsupplyservice.enums.CollectionStatus;
 import com.donorconnect.bloodsupplyservice.service.DonationService;
+import com.donorconnect.bloodsupplyservice.service.TestResultService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class DonationController {
 
     private final DonationService donationService;
+    private final TestResultService testResultService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN', 'ROLE_LAB_TECHNICIAN')")
@@ -71,5 +73,14 @@ public class DonationController {
     @Operation(summary = "Find donation by bag ID")
     public ResponseEntity<ApiResponse<?>> getByBagId(@PathVariable String bagId) {
         return ResponseEntity.ok(ApiResponse.success(donationService.getByBagId(bagId)));
+    }
+
+    @GetMapping("/{donationId}/component-readiness")
+    @PreAuthorize("hasAnyRole('ROLE_PHLEBOTOMIST','ROLE_ADMIN','ROLE_LAB_TECHNICIAN','ROLE_INVENTORY_CONTROLLER')")
+    @Operation(summary = "Whether a donation can have components registered",
+            description = "Returns ready=true ONLY if all 7 mandatory tests are entered and none are reactive. "
+                    + "If ready=false, the payload's reason field explains why (INCOMPLETE or REACTIVE).")
+    public ResponseEntity<ApiResponse<?>> getComponentReadiness(@PathVariable Long donationId) {
+        return ResponseEntity.ok(ApiResponse.success(testResultService.getComponentReadiness(donationId)));
     }
 }

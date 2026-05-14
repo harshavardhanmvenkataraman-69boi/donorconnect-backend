@@ -9,6 +9,7 @@ import com.donorconnect.safetyservice.feign.*;
 import com.donorconnect.safetyservice.repository.*;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,8 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -29,16 +29,17 @@ public class SafetyService {
     private final BloodIssueClient bloodIssueClient;
     private final BloodComponentClient bloodComponentClient;
     private final DonationClient donationClient;
+    private final DonorClient donorClient;
 
     // --- REACTIONS ---
+
+    // Reaction created → status = PENDING
     public Reaction create(ReactionRequest req) {
-
-       ApiResponse<?> issueResponse= bloodIssueClient.getIssueById(req.getIssueId());
-       if(!issueResponse.isSuccess()){
-           throw new ServiceUnavailableException("Transfusion service is currently unavailable. Please try again later.");
-
-       }
-
+        ApiResponse<?> issueResponse = bloodIssueClient.getIssueById(req.getIssueId());
+        if (!issueResponse.isSuccess()) {
+            throw new ServiceUnavailableException(
+                    "Transfusion service is currently unavailable. Please try again later.");
+        }
         Reaction r = Reaction.builder()
                 .issueId(req.getIssueId())
                 .patientId(req.getPatientId())
@@ -46,7 +47,7 @@ public class SafetyService {
                 .severity(req.getSeverity())
                 .reactionDate(req.getReactionDate() != null ? req.getReactionDate() : LocalDate.now())
                 .notes(req.getNotes())
-                .status(ReactionStatus.PENDING)
+                .status(ReactionStatus.PENDING)   // ← always starts PENDING
                 .build();
         return reactionRepository.save(r);
     }
@@ -76,6 +77,7 @@ public class SafetyService {
         return reactionRepository.save(r);
     }
 
+    // Manual status update — Admin can move to CLOSED
     public Reaction updateStatus(Long id, ReactionStatus status) {
         Reaction r = getById(id);
         r.setStatus(status);
@@ -83,23 +85,51 @@ public class SafetyService {
     }
 
     // --- LOOKBACK ---
+
+    // Status flow:
+    // Lookback initiated → LookbackTrace.status = TRACED
+    //                    → Reaction.status = INVESTIGATING (auto)
+    // Admin closes       → Reaction.status = CLOSED (manual via updateStatus)
+    //                    → LookbackTrace.status = CLOSED (manual via updateLookbackStatus)
     public LookbackTrace createTrace(LookbackRequest req) {
-       ApiResponse<?> donationResponse= donationClient.getById(req.getDonationId());
-       if(!donationResponse.isSuccess()){
-              throw new ServiceUnavailableException("Blood supply service is currently unavailable. Please try again later.");
-       }
-        ApiResponse<?> componentResponse=  bloodComponentClient.getById(req.getComponentId());
-        if(!componentResponse.isSuccess()){
-            throw new ServiceUnavailableException("Blood supply service is currently unavailable. Please try again later.");
+
+        // Validate donation exists
+        ApiResponse<?> donationResponse = donationClient.getById(req.getDonationId());
+        if (!donationResponse.isSuccess()) {
+            throw new ServiceUnavailableException(
+                    "Blood supply service is currently unavailable. Please try again later.");
         }
+
+        // Validate component exists
+        ApiResponse<?> componentResponse = bloodComponentClient.getById(req.getComponentId());
+        if (!componentResponse.isSuccess()) {
+            throw new ServiceUnavailableException(
+                    "Blood supply service is currently unavailable. Please try again later.");
+        }
+
+        // Save trace with TRACED status — chain has been successfully traced
         LookbackTrace t = LookbackTrace.builder()
                 .donationId(req.getDonationId())
                 .componentId(req.getComponentId())
                 .patientId(req.getPatientId())
                 .traceDate(LocalDate.now())
-                .status("ACTIVE")
+                .status(LookbackStatus.TRACED)   // ← donation→component→patient chain traced
                 .build();
-        return lookbackTraceRepository.save(t);
+        LookbackTrace saved = lookbackTraceRepository.save(t);
+
+        // Auto-update linked reaction: PENDING → INVESTIGATING
+        // Only updates if reactionId is provided and reaction is still PENDING
+        if (req.getReactionId() != null) {
+            reactionRepository.findById(req.getReactionId()).ifPresent(reaction -> {
+                if (reaction.getStatus() == ReactionStatus.PENDING) {
+                    reaction.setStatus(ReactionStatus.INVESTIGATING);
+                    reactionRepository.save(reaction);
+                    log.info("Auto-updated reaction {} → INVESTIGATING after lookback initiated", req.getReactionId());
+                }
+            });
+        }
+
+        return saved;
     }
 
     public List<LookbackTrace> getByDonation(Long donationId) {
@@ -114,10 +144,20 @@ public class SafetyService {
         return lookbackTraceRepository.findByComponentId(componentId);
     }
 
-    // NEW — get componentId from issueId
-    // BloodIssueClient calls: /transfusion/api/v1/issue/{issueId}
-    // IssueRecord fields: issueId, componentId, patientId, ...
-    // FIX: Jackson deserializes numbers as Integer, use Number.longValue() not Long.valueOf()
+    public List<LookbackTrace> getTracesByPatient(Long patientId) {
+        return lookbackTraceRepository.findByPatientId(patientId);
+    }
+
+    // Admin closes the lookback trace — TRACED → CLOSED
+    public LookbackTrace updateLookbackStatus(Long traceId, LookbackStatus status) {
+        LookbackTrace trace = lookbackTraceRepository.findById(traceId)
+                .orElseThrow(() -> new ResourceNotFoundException("LookbackTrace", traceId));
+        trace.setStatus(status);
+        return lookbackTraceRepository.save(trace);
+    }
+
+    // --- LOOKUP HELPERS ---
+
     public Long getComponentIdByIssue(Long issueId) {
         ApiResponse<?> response = bloodIssueClient.getIssueById(issueId);
         if (!response.isSuccess()) {
@@ -126,16 +166,13 @@ public class SafetyService {
         }
         Long componentId = extractLongField(response.getData(), "componentId");
         if (componentId == null) {
-            log.error("componentId not found in issue response for issueId={}: {}", issueId, response.getData());
+            log.error("componentId not found for issueId={}", issueId);
             throw new ResourceNotFoundException("ComponentId for Issue", issueId);
         }
         log.info("Fetched componentId={} for issueId={}", componentId, issueId);
         return componentId;
     }
 
-    // NEW — get donationId from componentId
-    // BloodComponentClient calls: /api/v1/components/{componentId}
-    // BloodComponent fields: componentId, donationId, componentType, ...
     public Long getDonationIdByComponent(Long componentId) {
         ApiResponse<?> response = bloodComponentClient.getById(componentId);
         if (!response.isSuccess()) {
@@ -144,16 +181,50 @@ public class SafetyService {
         }
         Long donationId = extractLongField(response.getData(), "donationId");
         if (donationId == null) {
-            log.error("donationId not found in component response for componentId={}: {}", componentId, response.getData());
+            log.error("donationId not found for componentId={}", componentId);
             throw new ResourceNotFoundException("DonationId for Component", componentId);
         }
         log.info("Fetched donationId={} for componentId={}", donationId, componentId);
         return donationId;
     }
 
-    // Helper — safely extracts a Long from a Map returned by Feign
-    // Jackson deserializes JSON numbers as Integer (if value fits) or Long
-    // Using Number.longValue() handles both cases safely
+    // --- LOOKBACK DETAILS (Admin only) ---
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getLookbackDetails(Long donationId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        ApiResponse<?> donationRes = donationClient.getById(donationId);
+        if (!donationRes.isSuccess()) {
+            throw new ServiceUnavailableException("Blood supply service unavailable.");
+        }
+        Map<String, Object> donation = (Map<String, Object>) donationRes.getData();
+        result.put("donation", donation);
+
+        Long donorId = extractLongField(donation, "donorId");
+        if (donorId != null) {
+            ApiResponse<?> donorRes = donorClient.getDonorById(donorId);
+            if (donorRes.isSuccess()) {
+                result.put("donor", donorRes.getData());
+            } else {
+                log.warn("Could not fetch donor for donorId={}", donorId);
+                result.put("donor", null);
+            }
+        }
+
+        ApiResponse<?> componentsRes = bloodComponentClient.getByDonationId(donationId);
+        if (componentsRes.isSuccess()) {
+            result.put("components", componentsRes.getData());
+        } else {
+            log.warn("Could not fetch components for donationId={}", donationId);
+            result.put("components", Collections.emptyList());
+        }
+
+        return result;
+    }
+
+    // --- HELPER ---
+
     @SuppressWarnings("unchecked")
     private Long extractLongField(Object data, String fieldName) {
         if (data instanceof Map<?, ?> dataMap) {
