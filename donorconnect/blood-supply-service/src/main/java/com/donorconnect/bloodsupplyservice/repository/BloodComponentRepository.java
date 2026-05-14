@@ -14,4 +14,7 @@ public interface BloodComponentRepository extends JpaRepository<BloodComponent, 
     List<BloodComponent> findByStatus(ComponentStatus status);
     List<BloodComponent> findByExpiryDateBefore(LocalDate date);
     List<BloodComponent> findByExpiryDateBetween(LocalDate from, LocalDate to);
+
+    // Used by BloodComponentService to enforce one-component-per-type-per-donation.
+    java.util.Optional<BloodComponent> findByDonationIdAndComponentType(Long donationId, ComponentType componentType);
 }

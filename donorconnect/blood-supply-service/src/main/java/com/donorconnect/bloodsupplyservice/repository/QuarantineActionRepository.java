@@ -11,4 +11,5 @@ import java.util.List;
 public interface QuarantineActionRepository extends JpaRepository<QuarantineAction, Long> {
     List<QuarantineAction> findByComponentId(Long componentId);
     List<QuarantineAction> findByStatus(QuarantineStatus status);
+    List<QuarantineAction> findByComponentIdAndStatus(Long componentId, QuarantineStatus status);
 }
