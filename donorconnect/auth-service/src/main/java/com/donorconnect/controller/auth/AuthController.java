@@ -20,12 +20,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/setup-admin")
-    public ResponseEntity<ApiResponse<?>> setupAdmin(@RequestBody Setupadminrequest request) {
-        String message = authService.setupFirstAdmin(request);
-
-        return ResponseEntity.ok(ApiResponse.success(message, null));
-    }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<?>> login(@RequestBody LoginRequest request) {
@@ -37,14 +31,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Login successful", result));
     }
 
-
-//    @PostMapping("/register")
-//    @PreAuthorize("hasRole('ROLE_ADMIN')")
-//    public ResponseEntity<ApiResponse<?>> register(@RequestBody RegisterRequest request) {
-//        log.info("Registering new user: " + request.getEmail() +" with role: " + request.getRole());
-//        return ResponseEntity.ok(ApiResponse.success("User registered successfully",
-//                authService.register(request)));
-//    }
+    @PostMapping("/register")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<?>> register(@RequestBody RegisterRequest request) {
+        log.info("Registering new user: " + request.getEmail() +" with role: " + request.getRole());
+        return ResponseEntity.ok(ApiResponse.success("User registered successfully",
+                authService.register(request)));
+    }
 
     @PutMapping("/change-password")
     public ResponseEntity<ApiResponse<?>> changePassword(@RequestBody ChangePasswordRequest request,

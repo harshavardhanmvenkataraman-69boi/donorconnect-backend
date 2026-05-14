@@ -56,7 +56,9 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    // one way hashing -> converts raw password into hashed password and use salting(which means a random string of characters will be added in front of your hashed password so no two users can have same hashed password)
+    // one way hashing -> converts raw password into hashed password and use salting
+    // (which means a random string of characters will be added in front of your hashed
+    // password so no two users can have same hashed password)
 
     // user details service is the one who can go in the database as it makes the bridge b/w the database and spring security and verifies the hashed password and email
     @Bean
@@ -88,7 +90,9 @@ public class SecurityConfig {
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-        // a default filter that checks for username and password it says before you look for password let my jwt filter check for a valid token and if that token is valid the rest of the security check got skipped
+        // a default filter that checks for username and password it says before you
+        // look for password let my jwt filter check for a valid token and if that token
+        // is valid the rest of the security check got skipped
 
         return http.build();
     }
