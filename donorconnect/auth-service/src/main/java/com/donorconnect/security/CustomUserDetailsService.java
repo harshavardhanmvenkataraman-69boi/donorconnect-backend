@@ -15,7 +15,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
-    // it goes to your user repo and excecutes findByEmail, if user doesn't exist throws UernameNotFoundException and if exist returs UserDetails object(which contains hashed password and role)
+    // it goes to your user repo and executes findByEmail, if user doesn't exist throws UernameNotFoundException and if exist returs UserDetails object(which contains hashed password and role)
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return userRepository.findByEmail(email)

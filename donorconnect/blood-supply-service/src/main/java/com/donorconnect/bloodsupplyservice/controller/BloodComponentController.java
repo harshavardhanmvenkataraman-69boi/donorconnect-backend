@@ -79,4 +79,14 @@ public class BloodComponentController {
     public ResponseEntity<ApiResponse<?>> getExpiring(@RequestParam(defaultValue = "3") int days) {
         return ResponseEntity.ok(ApiResponse.success(bloodComponentService.getExpiring(days)));
     }
+
+    @GetMapping("/donation/{donationId}/volume-info")
+    @PreAuthorize("hasAnyRole('ROLE_LAB_TECHNICIAN','ROLE_ADMIN')")
+    @Operation(summary = "Donation volume info for component registration form",
+            description = "Returns total/used/remaining volume, bagId, existing component types, "
+                    + "and whether the donation has any reactive test result. Used by the UI "
+                    + "to pre-populate the component-registration form and warn the user.")
+    public ResponseEntity<ApiResponse<?>> getVolumeInfo(@PathVariable Long donationId) {
+        return ResponseEntity.ok(ApiResponse.success(bloodComponentService.getVolumeInfo(donationId)));
+    }
 }

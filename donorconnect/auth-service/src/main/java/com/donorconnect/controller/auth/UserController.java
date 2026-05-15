@@ -42,6 +42,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(authService.getUsersByRole(role)));
     }
 
+    // to see all the users by status(locked deactivated active)
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<?>> getUsersByStatus(@PathVariable UserStatus status) {

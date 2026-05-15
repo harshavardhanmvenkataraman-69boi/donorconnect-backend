@@ -2,6 +2,7 @@ package com.donorconnect.donorservice.repository;
 
 import com.donorconnect.donorservice.entity.DonationAppointment;
 
+import com.donorconnect.donorservice.enums.AppointmentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
@@ -14,4 +15,5 @@ public interface DonationAppointmentRepository extends JpaRepository<DonationApp
     void deleteByDonorId(Long donorId);
     List<DonationAppointment> findByDateTimeBetween(LocalDateTime start, LocalDateTime end);
     boolean existsByDonorIdAndDateTimeBetween(Long donorId,LocalDateTime start,LocalDateTime end);
+    long countByDriveIdAndStatusNotIn(Long driveId, List<AppointmentStatus> statuses);
 }
