@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -59,7 +60,15 @@ public class AppointmentService {
         if(req.getDriveId()!=null){
             Drive drive=driveRepository.findById(req.getDriveId())
                     .orElseThrow(()-> new ResourceNotFoundException("Drive",req.getDriveId()) );
+            LocalDate appointmentDate = req.getDateTime().toLocalDate();
+            LocalDate driveDate = drive.getScheduledDate();
 
+            if (!appointmentDate.equals(driveDate)) {
+                throw new InvalidOperationException(
+                        "Book Appointment",
+                        "Appointment date must match the drive date: " + driveDate
+                );
+            }
             if (drive.getCapacity() != null) {
                 long bookedCount = appointmentRepository
                         .countByDriveIdAndStatusNotIn(
