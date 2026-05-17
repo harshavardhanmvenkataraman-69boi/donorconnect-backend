@@ -1,71 +1,151 @@
 package com.donorconnect.billingservice.controller;
 
-
+import com.donorconnect.billingservice.dto.BillingRequestDTO;
+import com.donorconnect.billingservice.dto.BillingResponseDTO;
+import com.donorconnect.billingservice.dto.BillingStatusUpdateDTO;
+import com.donorconnect.billingservice.dto.PagedResponseDTO;
+import com.donorconnect.billingservice.enums.BillingStatus;
 import com.donorconnect.billingservice.service.BillingService;
-import com.donorconnect.billingservice.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-// import org.springframework.security.access.prepost.PreAuthorize;
-import java.time.LocalDate;
-import java.util.List;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Billing REST API.
+ *
+ * Mounted at /api/v1/billing — the API gateway rewrites /api/billing/(.*)
+ * onto this path before forwarding the request.
+ */
 @RestController
-@RequestMapping("/billing")
+@RequestMapping("/api/v1/billing")
 @RequiredArgsConstructor
-// @PreAuthorize("hasRole('ADMIN')") // Only admins can access billing endpoints
 public class BillingController {
 
     private final BillingService billingService;
 
-    // POST /billing — Create billing record
+    // ── Commands ────────────────────────────────────────────────────────────────
+
+    /** POST /api/v1/billing — create a billing record. */
     @PostMapping
-    public ResponseEntity<com.donorconnect.billingservice.dto.BillingResponseDTO> createBilling(
-            @Valid @RequestBody com.donorconnect.billingservice.dto.BillingRequestDTO request) {
-        com.donorconnect.billingservice.dto.BillingResponseDTO response = billingService.createBilling(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<BillingResponseDTO> createBilling(@Valid @RequestBody BillingRequestDTO request) {
+        BillingResponseDTO created = billingService.createBilling(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    // GET /billing — All billing records (paginated)
+    /** PATCH /api/v1/billing/{billingId}/status — update status. */
+    @PatchMapping("/{billingId}/status")
+    public ResponseEntity<BillingResponseDTO> updateBillingStatus(
+            @PathVariable Integer billingId,
+            @Valid @RequestBody BillingStatusUpdateDTO statusUpdate) {
+        return ResponseEntity.ok(billingService.updateBillingStatus(billingId, statusUpdate));
+    }
+
+    /** POST /api/v1/billing/export/mark — mark all PENDING records in range as EXPORTED. */
+    @PostMapping("/export/mark")
+    public ResponseEntity<List<BillingResponseDTO>> markExported(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(billingService.markExported(from, to));
+    }
+
+    // ── Queries ─────────────────────────────────────────────────────────────────
+
+    /** GET /api/v1/billing — paginated list, optional status filter. */
     @GetMapping
-    public ResponseEntity<Page<com.donorconnect.billingservice.dto.BillingResponseDTO>> getAllBillings(
-            @PageableDefault(size = 10, sort = "billingId") Pageable pageable) {
-        return ResponseEntity.ok(billingService.getAllBillings(pageable));
+    public ResponseEntity<PagedResponseDTO<BillingResponseDTO>> getAllBillings(
+            @RequestParam(required = false) BillingStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "billingId") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir) {
+
+        Sort sort = "ASC".equalsIgnoreCase(sortDir)
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1), sort);
+        Page<BillingResponseDTO> result = billingService.getAllBillings(status, pageable);
+        return ResponseEntity.ok(PagedResponseDTO.from(result));
     }
 
-    // GET /billing/{billingId} — Get billing record by ID
+    /** GET /api/v1/billing/stats — counts per status, plus TOTAL. */
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Long>> getStats() {
+        return ResponseEntity.ok(billingService.getStatusCounts());
+    }
+
+    /** GET /api/v1/billing/{billingId} — single record. */
     @GetMapping("/{billingId}")
-    public ResponseEntity<com.donorconnect.billingservice.dto.BillingResponseDTO> getBillingById(
-            @PathVariable Integer billingId) {
+    public ResponseEntity<BillingResponseDTO> getBillingById(@PathVariable Integer billingId) {
         return ResponseEntity.ok(billingService.getBillingById(billingId));
     }
 
-    // GET /billing/issue/{issueId} — Billing record for an issue
+    /** GET /api/v1/billing/issue/{issueId} — record for an issue. */
     @GetMapping("/issue/{issueId}")
-    public ResponseEntity<com.donorconnect.billingservice.dto.BillingResponseDTO> getBillingByIssueId(
-            @PathVariable Integer issueId) {
+    public ResponseEntity<BillingResponseDTO> getBillingByIssueId(@PathVariable Integer issueId) {
         return ResponseEntity.ok(billingService.getBillingByIssueId(issueId));
     }
 
-    // GET /billing/export?from=&to= — Export billing data as JSON
-    @GetMapping("/export")
-    public ResponseEntity<List<com.donorconnect.billingservice.dto.BillingResponseDTO>> exportBillings(
+    /** GET /api/v1/billing/export — read-only export (JSON), filtered by date and optionally status. */
+    @GetMapping(value = "/export", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<BillingResponseDTO>> exportBillingsJson(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(billingService.exportBillings(from, to));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) BillingStatus status) {
+        return ResponseEntity.ok(billingService.exportBillings(from, to, status));
     }
 
-    // PATCH /billing/{billingId}/status — Update billing status
-    @PatchMapping("/{billingId}/status")
-    public ResponseEntity<com.donorconnect.billingservice.dto.BillingResponseDTO> updateBillingStatus(
-            @PathVariable Integer billingId,
-            @Valid @RequestBody com.donorconnect.billingservice.dto.BillingStatusUpdateDTO statusUpdate) {
-        return ResponseEntity.ok(billingService.updateBillingStatus(billingId, statusUpdate));
+    /** GET /api/v1/billing/export.csv — read-only CSV export. */
+    @GetMapping(value = "/export.csv", produces = "text/csv")
+    public ResponseEntity<String> exportBillingsCsv(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) BillingStatus status) {
+
+        List<BillingResponseDTO> rows = billingService.exportBillings(from, to, status);
+
+        StringWriter sw = new StringWriter();
+        try (PrintWriter pw = new PrintWriter(sw)) {
+            pw.println("billingId,issueId,chargeAmount,chargeType,billingDate,status,createdAt,updatedAt");
+            for (BillingResponseDTO r : rows) {
+                pw.printf("%s,%s,%s,%s,%s,%s,%s,%s%n",
+                        r.getBillingId(),
+                        r.getIssueId(),
+                        r.getChargeAmount(),
+                        r.getChargeType(),
+                        r.getBillingDate(),
+                        r.getStatus(),
+                        formatTs(r.getCreatedAt()),
+                        formatTs(r.getUpdatedAt())
+                );
+            }
+        }
+
+        String filename = String.format("billing-export-%s-to-%s.csv", from, to);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+        headers.add(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8");
+        return new ResponseEntity<>(sw.toString(), headers, HttpStatus.OK);
+    }
+
+    private static String formatTs(LocalDateTime ts) {
+        return ts == null ? "" : ts.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 }

@@ -77,7 +77,7 @@ public class AppointmentController {
     }
 
     @PatchMapping("/{appointmentId}/cancel")
-    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ROLE_ADMIN','ROLE_DONOR')")
+    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ROLE_DONOR')")
     @Operation(summary = "Cancel appointment")
     public ResponseEntity<ApiResponse<?>> cancel(@PathVariable Long appointmentId) {
         return ResponseEntity.ok(ApiResponse.success("Appointment cancelled", appointmentService.updateStatus(appointmentId, AppointmentStatus.CANCELLED)));

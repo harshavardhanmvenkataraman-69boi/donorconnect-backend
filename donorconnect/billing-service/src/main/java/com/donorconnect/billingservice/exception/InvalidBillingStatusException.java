@@ -3,16 +3,19 @@ package com.donorconnect.billingservice.exception;
 import org.springframework.http.HttpStatus;
 
 /**
- * Thrown when an invalid or unrecognised billing status value is provided,
- * or when a status transition is not permitted (e.g. PAID → PENDING).
+ * Thrown when an unknown billing status is provided, or a status
+ * transition is not permitted by the workflow rules.
+ *
  * Maps to HTTP 400 Bad Request.
  */
 public class InvalidBillingStatusException extends BillingException {
 
+    private static final String ALLOWED = "PENDING, EXPORTED, CANCELLED";
+
     public InvalidBillingStatusException(String providedStatus) {
         super(
-            String.format("Invalid billing status: '%s'. Allowed values: PENDING, PAID, CANCELLED, OVERDUE",
-                providedStatus),
+            String.format("Invalid billing status: '%s'. Allowed values: %s",
+                providedStatus, ALLOWED),
             HttpStatus.BAD_REQUEST,
             "INVALID_BILLING_STATUS"
         );

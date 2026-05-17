@@ -1,7 +1,9 @@
 package com.donorconnect.billingservice.exception;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -17,112 +19,120 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // ─── Custom Billing Exceptions ─────────────────────────────────────────────
+    // ── Custom Billing Exceptions ───────────────────────────────────────────────
 
-    /**
-     * Handles all BillingException subclasses:
-     * ResourceNotFoundException     → 404
-     * DuplicateBillingException      → 409
-     * InvalidBillingStatusException  → 400
-     * InvalidDateRangeException      → 400
-     * BillingAccessDeniedException   → 403
-     */
     @ExceptionHandler(BillingException.class)
     public ResponseEntity<ErrorResponse> handleBillingException(BillingException ex) {
-        ErrorResponse error = new ErrorResponse(
+        ErrorResponse body = new ErrorResponse(
                 ex.getStatus().value(),
                 ex.getErrorCode(),
                 ex.getMessage(),
                 LocalDateTime.now()
         );
-        return ResponseEntity.status(ex.getStatus()).body(error);
+        return ResponseEntity.status(ex.getStatus()).body(body);
     }
 
-    // ─── Validation Errors ──────────────────────────────────────────────────────
+    // ── Bean validation (@Valid) ────────────────────────────────────────────────
 
-    /**
-     * Handles @Valid annotation failures on request bodies.
-     * Returns a map of field → error message.
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ValidationErrorResponse> handleValidationErrors(
-            MethodArgumentNotValidException ex) {
-
+    public ResponseEntity<ValidationErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
-            String field = ((FieldError) error).getField();
+            String field   = ((FieldError) error).getField();
             String message = error.getDefaultMessage();
             fieldErrors.put(field, message);
         });
 
-        ValidationErrorResponse response = new ValidationErrorResponse(
+        ValidationErrorResponse body = new ValidationErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 "VALIDATION_FAILED",
                 "Request validation failed",
                 fieldErrors,
                 LocalDateTime.now()
         );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        return ResponseEntity.badRequest().body(body);
     }
 
-    // ─── Missing / Wrong Type Request Params ────────────────────────────────────
+    // ── Missing / wrong-type query params ───────────────────────────────────────
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<ErrorResponse> handleMissingParams(
-            MissingServletRequestParameterException ex) {
-
-        ErrorResponse error = new ErrorResponse(
+    public ResponseEntity<ErrorResponse> handleMissingParams(MissingServletRequestParameterException ex) {
+        ErrorResponse body = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 "MISSING_PARAMETER",
                 String.format("Required parameter '%s' of type '%s' is missing",
                         ex.getParameterName(), ex.getParameterType()),
                 LocalDateTime.now()
         );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(
-            MethodArgumentTypeMismatchException ex) {
-
-        ErrorResponse error = new ErrorResponse(
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String type = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown";
+        ErrorResponse body = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 "TYPE_MISMATCH",
-                String.format("Parameter '%s' should be of type '%s'",
-                        ex.getName(),
-                        ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown"),
+                String.format("Parameter '%s' should be of type '%s'", ex.getName(), type),
                 LocalDateTime.now()
         );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        return ResponseEntity.badRequest().body(body);
     }
 
-    // ─── Spring Security Access Denied ──────────────────────────────────────────
+    // ── Unparseable JSON body / unknown enum value ──────────────────────────────
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex) {
+        Throwable cause = ex.getCause();
+        String code    = "MALFORMED_REQUEST";
+        String message = "Request body is malformed or contains invalid values";
+
+        if (cause instanceof InvalidFormatException ife && ife.getTargetType() != null
+                && ife.getTargetType().isEnum()) {
+            code    = "INVALID_ENUM_VALUE";
+            message = String.format("Invalid value '%s' for field '%s'. Allowed: %s",
+                    ife.getValue(),
+                    ife.getPath().isEmpty() ? "?" : ife.getPath().get(ife.getPath().size() - 1).getFieldName(),
+                    java.util.Arrays.toString(ife.getTargetType().getEnumConstants()));
+        }
+
+        ErrorResponse body = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(), code, message, LocalDateTime.now());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    // ── Spring Security ─────────────────────────────────────────────────────────
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
-        ErrorResponse error = new ErrorResponse(
+        ErrorResponse body = new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
                 "ACCESS_DENIED",
                 "You do not have permission to perform this action",
                 LocalDateTime.now()
         );
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
-    // ─── Fallback ────────────────────────────────────────────────────────────────
+    // ── Fallback ────────────────────────────────────────────────────────────────
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        ErrorResponse error = new ErrorResponse(
+        // Always log the real exception — silent 500s waste hours of debugging.
+        log.error("Unhandled exception reached fallback handler: {}", ex.getMessage(), ex);
+
+        ErrorResponse body = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "INTERNAL_SERVER_ERROR",
                 "An unexpected error occurred. Please try again later.",
                 LocalDateTime.now()
         );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
-    // ─── Response Shapes ─────────────────────────────────────────────────────────
+    // ── Response shapes ─────────────────────────────────────────────────────────
 
     public record ErrorResponse(
             int status,

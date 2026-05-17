@@ -15,14 +15,11 @@
         <module>api-gateway</module>
         <module>config-server</module>
         <module>auth-service</module>
-        <module>config-service</module>
         <module>donor-service</module>
         <module>blood-supply-service</module>
         <module>transfusion-service</module>
         <module>safety-service</module>
         <module>billing-service</module>
-        <module>reporting-service</module>
-        <module>notification-service</module>
         <module>inventory-service</module>
     </modules>
 </project>

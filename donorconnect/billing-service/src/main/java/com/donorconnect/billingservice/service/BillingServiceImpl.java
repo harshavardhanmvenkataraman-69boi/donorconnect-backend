@@ -1,13 +1,15 @@
 package com.donorconnect.billingservice.service;
 
-import com.donorconnect.billingservice.feign.TransfusionServiceClient;
+import com.donorconnect.billingservice.dto.BillingRequestDTO;
+import com.donorconnect.billingservice.dto.BillingResponseDTO;
+import com.donorconnect.billingservice.dto.BillingStatusUpdateDTO;
+import com.donorconnect.billingservice.enums.BillingStatus;
 import com.donorconnect.billingservice.exception.DuplicateBillingException;
 import com.donorconnect.billingservice.exception.InvalidBillingStatusException;
 import com.donorconnect.billingservice.exception.InvalidDateRangeException;
 import com.donorconnect.billingservice.exception.ResourceNotFoundException;
 import com.donorconnect.billingservice.model.BillingRef;
 import com.donorconnect.billingservice.repository.BillingRepository;
-import com.donorconnect.billingservice.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,116 +28,148 @@ import java.util.Set;
 public class BillingServiceImpl implements BillingService {
 
     private final BillingRepository billingRepository;
-    private final TransfusionServiceClient transfusionServiceClient;
 
-    // Allowed status values
-    private static final Set<String> ALLOWED_STATUSES =
-            Set.of("PENDING", "PAID", "CANCELLED", "OVERDUE");
-
-    // Allowed status transitions: current → set of valid next statuses
-    private static final Map<String, Set<String>> STATUS_TRANSITIONS = Map.of(
-            "PENDING",   Set.of("PAID", "CANCELLED", "OVERDUE"),
-            "OVERDUE",   Set.of("PAID", "CANCELLED"),
-            "PAID",      Set.of(),        // terminal
-            "CANCELLED", Set.of()         // terminal
+    /**
+     * Allowed status transitions per the spec workflow:
+     *   PENDING   → EXPORTED | CANCELLED
+     *   EXPORTED  → terminal
+     *   CANCELLED → terminal
+     */
+    private static final Map<BillingStatus, Set<BillingStatus>> TRANSITIONS = Map.of(
+            BillingStatus.PENDING,   Set.of(BillingStatus.EXPORTED, BillingStatus.CANCELLED),
+            BillingStatus.EXPORTED,  Set.of(),
+            BillingStatus.CANCELLED, Set.of()
     );
+
+    // ── Commands ────────────────────────────────────────────────────────────────
 
     @Override
     @Transactional
-    public BillingResponseDTO createBilling(com.donorconnect.billingservice.dto.BillingRequestDTO request) {
-        // Guard: no duplicate billing for the same issue
+    public BillingResponseDTO createBilling(BillingRequestDTO request) {
         billingRepository.findByIssueId(request.getIssueId()).ifPresent(existing -> {
             throw new DuplicateBillingException(request.getIssueId());
         });
 
-        // Guard: status must be valid
-        validateStatus(request.getStatus());
+        BillingStatus status = request.getStatus() != null
+                ? request.getStatus()
+                : BillingStatus.PENDING;
 
-        BillingRef billing = BillingRef.builder()
+        BillingRef saved = billingRepository.save(BillingRef.builder()
                 .issueId(request.getIssueId())
                 .chargeAmount(request.getChargeAmount())
                 .chargeType(request.getChargeType())
                 .billingDate(request.getBillingDate())
-                .status(request.getStatus())
-                .build();
+                .status(status)
+                .build());
 
+        return mapToResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public BillingResponseDTO updateBillingStatus(Integer billingId, BillingStatusUpdateDTO statusUpdate) {
+        BillingRef billing = billingRepository.findById(billingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Billing", "billingId", billingId));
+
+        BillingStatus current = billing.getStatus();
+        BillingStatus target  = statusUpdate.getStatus();
+
+        if (current == target) {
+            // idempotent — no transition needed, just echo current state
+            return mapToResponse(billing);
+        }
+
+        Set<BillingStatus> allowed = TRANSITIONS.getOrDefault(current, Set.of());
+        if (!allowed.contains(target)) {
+            throw new InvalidBillingStatusException(current.name(), target.name());
+        }
+
+        billing.setStatus(target);
         return mapToResponse(billingRepository.save(billing));
     }
 
     @Override
+    @Transactional
+    public List<BillingResponseDTO> markExported(LocalDate from, LocalDate to) {
+        validateRange(from, to);
+
+        List<BillingRef> rows = billingRepository.findForExport(from, to, BillingStatus.PENDING);
+        List<BillingResponseDTO> result = new ArrayList<>(rows.size());
+        for (BillingRef b : rows) {
+            b.setStatus(BillingStatus.EXPORTED);
+            result.add(mapToResponse(billingRepository.save(b)));
+        }
+        return result;
+    }
+
+    // ── Queries ─────────────────────────────────────────────────────────────────
+
+    @Override
     @Transactional(readOnly = true)
-    public Page<BillingResponseDTO> getAllBillings(Pageable pageable) {
-        return billingRepository.findAll(pageable).map(this::mapToResponse);
+    public Page<BillingResponseDTO> getAllBillings(BillingStatus status, Pageable pageable) {
+        Page<BillingRef> page = (status == null)
+                ? billingRepository.findAll(pageable)
+                : billingRepository.findByStatus(status, pageable);
+        return page.map(this::mapToResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public BillingResponseDTO getBillingById(Integer billingId) {
-        BillingRef billing = billingRepository.findById(billingId)
+        return billingRepository.findById(billingId)
+                .map(this::mapToResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Billing", "billingId", billingId));
-        return mapToResponse(billing);
     }
 
     @Override
     @Transactional(readOnly = true)
     public BillingResponseDTO getBillingByIssueId(Integer issueId) {
-        BillingRef billing = billingRepository.findByIssueId(issueId)
+        return billingRepository.findByIssueId(issueId)
+                .map(this::mapToResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Billing", "issueId", issueId));
-        return mapToResponse(billing);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<BillingResponseDTO> exportBillings(LocalDate from, LocalDate to) {
-        // Guard: from must not be after to
-        if (from.isAfter(to)) {
-            throw new InvalidDateRangeException(from, to);
+    public List<BillingResponseDTO> exportBillings(LocalDate from, LocalDate to, BillingStatus status) {
+        validateRange(from, to);
+
+        List<BillingResponseDTO> out = new ArrayList<>();
+        for (BillingRef b : billingRepository.findForExport(from, to, status)) {
+            out.add(mapToResponse(b));
         }
-        List<BillingResponseDTO> result = new ArrayList<>();
-        for (BillingRef billing : billingRepository.findByBillingDateBetween(from, to)) {
-            result.add(mapToResponse(billing));
-        }
-        return result;
+        return out;
     }
 
     @Override
-    @Transactional
-    public BillingResponseDTO updateBillingStatus(Integer billingId, com.donorconnect.billingservice.dto.BillingStatusUpdateDTO statusUpdate) {
-        BillingRef billing = billingRepository.findById(billingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Billing", "billingId", billingId));
-
-        String newStatus = statusUpdate.getStatus().toUpperCase();
-
-        // Guard: new status must be a known value
-        validateStatus(newStatus);
-
-        // Guard: transition must be permitted
-        String currentStatus = billing.getStatus().toUpperCase();
-        Set<String> allowed = STATUS_TRANSITIONS.getOrDefault(currentStatus, Set.of());
-        if (!allowed.contains(newStatus)) {
-            throw new InvalidBillingStatusException(currentStatus, newStatus);
+    @Transactional(readOnly = true)
+    public Map<String, Long> getStatusCounts() {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (BillingStatus s : BillingStatus.values()) {
+            counts.put(s.name(), billingRepository.countByStatus(s));
         }
-
-        billing.setStatus(newStatus);
-        return mapToResponse(billingRepository.save(billing));
+        counts.put("TOTAL", billingRepository.count());
+        return counts;
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────────
+    // ── Helpers ─────────────────────────────────────────────────────────────────
 
-    private void validateStatus(String status) {
-        if (status == null || !ALLOWED_STATUSES.contains(status.toUpperCase())) {
-            throw new InvalidBillingStatusException(status);
+    private void validateRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            throw new InvalidDateRangeException(from, to);
         }
     }
 
-    private BillingResponseDTO mapToResponse(BillingRef billing) {
-        return com.donorconnect.billingservice.dto.BillingResponseDTO.builder()
-                .billingId(billing.getBillingId())
-                .issueId(billing.getIssueId())
-                .chargeAmount(billing.getChargeAmount())
-                .chargeType(billing.getChargeType())
-                .billingDate(billing.getBillingDate())
-                .status(billing.getStatus())
+    private BillingResponseDTO mapToResponse(BillingRef b) {
+        return BillingResponseDTO.builder()
+                .billingId(b.getBillingId())
+                .issueId(b.getIssueId())
+                .chargeAmount(b.getChargeAmount())
+                .chargeType(b.getChargeType())
+                .billingDate(b.getBillingDate())
+                .status(b.getStatus())
+                .createdAt(b.getCreatedAt())
+                .updatedAt(b.getUpdatedAt())
                 .build();
     }
 }

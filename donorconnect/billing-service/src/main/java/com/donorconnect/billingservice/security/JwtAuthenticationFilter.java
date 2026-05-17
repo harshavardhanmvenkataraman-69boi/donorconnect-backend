@@ -1,10 +1,12 @@
-package com.donorconnect.notificationservice.security;
+package com.donorconnect.billingservice.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,17 +18,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Pulls the Bearer token off the Authorization header, validates it
+ * through JwtTokenProvider, and seeds the SecurityContext. Mirrors
+ * transfusion-service's filter so behaviour stays consistent.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
-
-    /**
-     * Request attribute key under which the authenticated user's numeric userId is stored.
-     * Controllers read it via: (Long) request.getAttribute("userId")
-     */
-    public static final String USER_ID_ATTRIBUTE = "userId";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -37,18 +38,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token) && tokenProvider.validateToken(token)) {
             String username = tokenProvider.getUsernameFromToken(token);
-            Long userId     = tokenProvider.getUserIdFromToken(token);
             List<SimpleGrantedAuthority> authorities = tokenProvider.getAuthorities(token);
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(username, null, authorities);
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Store numeric userId so controllers don't need to parse the username string.
-            if (userId != null) {
-                request.setAttribute(USER_ID_ATTRIBUTE, userId);
-            }
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
         filterChain.doFilter(request, response);

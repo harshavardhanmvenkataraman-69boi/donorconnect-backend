@@ -1,15 +1,21 @@
 package com.donorconnect.billingservice.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import com.donorconnect.billingservice.enums.BillingStatus;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
+/**
+ * Payload for PATCH /billing/{id}/status.
+ *
+ * Use Spring's enum-binding so an unknown status value is rejected
+ * by Jackson with a clear 400 before reaching the service layer.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class BillingStatusUpdateDTO {
 
-    @NotBlank(message = "Status is required")
-    @Size(max = 20, message = "Status must be at most 20 characters")
-    private String status;
+    @NotNull(message = "Status is required")
+    private BillingStatus status;
 }

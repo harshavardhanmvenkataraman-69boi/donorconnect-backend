@@ -96,32 +96,10 @@ public class GatewayConfig {
 
                 // billing-service routes        
                 .route("billing-service", r -> r
-                        .path("/api/billing/**")
+                        .path("/api/billing", "/api/billing/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/billing/(?<segment>.*)", "/api/v1/billing/${segment}"))
+                                .rewritePath("^/api/billing", "/api/v1/billing"))
                         .uri("lb://billing-service"))
-
-                // reporting-service routes        
-                .route("reporting-service", r -> r
-                        .path("/api/reports/**")
-                        .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/reports/(?<segment>.*)", "/api/v1/reports/${segment}"))
-                        .uri("lb://reporting-service"))
-
-
-                // notification-service routes
-                .route("notification-service", r -> r
-                        .path("/api/notifications/**")
-                        .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/notifications/(?<segment>.*)", "/api/v1/notifications/${segment}"))
-                        .uri("lb://notification-service"))
-
-                // config-service routes        
-                .route("config-service", r -> r
-                        .path("/api/config/**")
-                        .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/config/(?<segment>.*)", "/api/v1/config/${segment}"))
-                        .uri("lb://config-service"))
 
 
                 .build();
