@@ -2,13 +2,12 @@ package com.donorconnect.donorservice.service;
 
 import com.donorconnect.donorservice.dto.request.DeferralRequest;
 import com.donorconnect.donorservice.entity.Deferral;
-import com.donorconnect.donorservice.enums.DeferralStatus;
-import com.donorconnect.donorservice.enums.DeferralType;
-import com.donorconnect.donorservice.enums.DonorStatus;
-import com.donorconnect.donorservice.exception.PermanentDeferralException;
-import com.donorconnect.donorservice.exception.ResourceNotFoundException;
+import com.donorconnect.donorservice.enums.*;
+import com.donorconnect.donorservice.exception.*;
 import com.donorconnect.donorservice.repository.DeferralRepository;
+
 import jakarta.transaction.Transactional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

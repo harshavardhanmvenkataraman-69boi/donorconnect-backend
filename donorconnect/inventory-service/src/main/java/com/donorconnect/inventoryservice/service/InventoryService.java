@@ -35,7 +35,7 @@ public class InventoryService {
     @Value("${app.inventory.expiry-warning-days:7}")
     private int expiryWarningDays;
 
-    // ─── INVENTORY BALANCE ───────────────────────────────────────────
+    //**INVENTORY BALANCE******
 
     /**
      * Called by blood-supply-service via Feign when a new Component is created.
@@ -53,14 +53,13 @@ public class InventoryService {
                 .componentType(request.getComponentType())
                 .expiryDate(request.getExpiryDate())
                 .bagNumber(request.getBagNumber())
-                .locationId(request.getLocationId())
                 .quantity(1)
                 .status(InventoryStatus.AVAILABLE)
                 .build();
         InventoryBalance saved = balanceRepo.save(balance);
 
         // Record a RECEIPT stock transaction
-        recordTransaction(saved.getComponentId(), saved.getLocationId(),
+        recordTransaction(saved.getComponentId(),
                 TransactionType.RECEIPT, 1, null, "Initial receipt from collection");
 
         // Check if expiry is within warning window
@@ -81,34 +80,51 @@ public class InventoryService {
     @Transactional
     public InventoryBalanceResponse updateStatus(Long componentId, InventoryStatusUpdateRequest request) {
         InventoryBalance balance = balanceRepo.findByComponentId(componentId)
-                .orElseThrow(() -> new ResourceNotFoundException("InventoryBalance not found for componentId=" + componentId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "InventoryBalance not found for componentId=" + componentId));
 
         InventoryStatus prev = balance.getStatus();
-        balance.setStatus(request.getStatus());
+        InventoryStatus newStatus = InventoryStatus.valueOf(request.getStatus().toUpperCase()); // convert here
+        balance.setStatus(newStatus);
 
         // Decrement quantity for ISSUED/DISPOSED
-        if (request.getStatus() == InventoryStatus.ISSUED || request.getStatus() == InventoryStatus.DISPOSED) {
+        if (newStatus == InventoryStatus.ISSUED || newStatus == InventoryStatus.DISPOSED) {
             balance.setQuantity(Math.max(0, balance.getQuantity() - 1));
         }
-        // Restore quantity if released from quarantine
-        if (prev == InventoryStatus.QUARANTINED && request.getStatus() == InventoryStatus.AVAILABLE) {
+
+        // Restore quantity if released from quarantine or returned from issue
+        if ((prev == InventoryStatus.QUARANTINED && newStatus == InventoryStatus.AVAILABLE) ||
+                (prev == InventoryStatus.ISSUED && newStatus == InventoryStatus.AVAILABLE)) {
             balance.setQuantity(balance.getQuantity() + 1);
         }
 
         InventoryBalance saved = balanceRepo.save(balance);
 
-        // Record transaction
-        TransactionType txnType = switch (request.getStatus()) {
-            case ISSUED -> TransactionType.ISSUE;
+        TransactionType txnType = switch (newStatus) {
+            case ISSUED      -> TransactionType.ISSUE;
             case QUARANTINED -> TransactionType.QUARANTINE;
-            case AVAILABLE -> TransactionType.RELEASE;
-            case DISPOSED -> TransactionType.ADJUST;
-            default -> TransactionType.ADJUST;
+            case AVAILABLE   -> TransactionType.RELEASE;
+            case RESERVED    -> TransactionType.ADJUST;
+            case DISPOSED    -> TransactionType.ADJUST;
+            default          -> TransactionType.ADJUST;
         };
-        recordTransaction(componentId, balance.getLocationId(), txnType, 1, null, request.getReason());
 
-        log.info("InventoryBalance status updated for componentId={}: {} → {}", componentId, prev, request.getStatus());
+        recordTransaction(componentId, txnType, 1, null, request.getReason());
+
+        log.info("InventoryBalance status updated for componentId={}: {} → {}",
+                componentId, prev, newStatus);
         return toBalanceResponse(saved);
+    }
+
+    public List<InventoryBalanceResponse> getAvailableUnits(String bloodGroup, String rhFactor, String componentType) {
+        return balanceRepo.findByBloodGroupAndRhFactorAndComponentTypeAndStatus(
+                        BloodGroup.valueOf(bloodGroup.toUpperCase()),
+                        RhFactor.valueOf(rhFactor.toUpperCase()),
+                        ComponentType.valueOf(componentType.toUpperCase()),
+                        InventoryStatus.AVAILABLE)
+                .stream()
+                .map(this::toBalanceResponse)
+                .collect(Collectors.toList());
     }
 
     public List<InventoryBalanceResponse> getAll() {
@@ -119,7 +135,14 @@ public class InventoryService {
         BloodGroup bg = BloodGroup.valueOf(bloodGroup.toUpperCase());
         return balanceRepo.findByBloodGroup(bg).stream().map(this::toBalanceResponse).collect(Collectors.toList());
     }
-
+    
+    public InventoryBalanceResponse getByComponentId(Long componentId) {
+        InventoryBalance ib = balanceRepo.findByComponentId(componentId)
+                .orElseThrow(() -> new ResourceNotFoundException("InventoryBalance not found for componentId=" + componentId));
+        
+        return toBalanceResponse(ib);            
+    }
+    
     public List<InventoryBalanceResponse> getLowStock() {
         return balanceRepo.findLowStock(lowStockThreshold).stream()
                 .map(this::toBalanceResponse).collect(Collectors.toList());
@@ -139,16 +162,57 @@ public class InventoryService {
 
     @Transactional
     public StockTransactionResponse createTransaction(StockTransactionRequest request) {
+        // 1. Look up the inventory balance for this component
+        InventoryBalance balance = balanceRepo.findByComponentId(request.getComponentId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "InventoryBalance not found for componentId=" + request.getComponentId()));
+
+        // 2. Compute the signed delta this transaction applies to the balance.
+        //    Inflow types add stock; outflow types remove stock; neutral types don't move it.
+        int qty = request.getQuantity();
+        int delta = switch (request.getTxnType()) {
+            // Inflow — stock arrives or returns to AVAILABLE
+            case RECEIPT, RETURN, TRANSFER_IN, RELEASE -> qty;
+            // Outflow — stock leaves AVAILABLE
+            case ISSUE, TRANSFER_OUT, QUARANTINE       -> -qty;
+            // Neutral / manual — ADJUST is treated as a signed correction; the user
+            //                   passes a positive qty, and we accept it as-is. A
+            //                   future enhancement could allow signed quantities.
+            case ADJUST                                -> qty;
+        };
+
+        // 3. Reject outflows that would drive the balance negative
+        int newQty = balance.getQuantity() + delta;
+        if (newQty < 0) {
+            throw new IllegalStateException(
+                    "Insufficient stock for componentId=" + request.getComponentId() +
+                    " (available: " + balance.getQuantity() +
+                    ", requested: " + qty +
+                    ", txnType: " + request.getTxnType() + ")");
+        }
+
+        // 4. Apply the delta and persist the balance
+        balance.setQuantity(newQty);
+        // Status side-effects: if balance hits 0 via ISSUE, mark ISSUED
+        if (newQty == 0 && request.getTxnType() == TransactionType.ISSUE) {
+            balance.setStatus(InventoryStatus.ISSUED);
+        }
+        balanceRepo.save(balance);
+
+        // 5. Save the transaction record
         StockTransaction txn = StockTransaction.builder()
                 .componentId(request.getComponentId())
-                .locationId(request.getLocationId())
                 .txnType(request.getTxnType())
-                .quantity(request.getQuantity())
+                .quantity(qty)
                 .txnDate(request.getTxnDate() != null ? request.getTxnDate() : LocalDate.now())
                 .referenceId(request.getReferenceId())
                 .notes(request.getNotes())
                 .build();
-        return toTxnResponse(txnRepo.save(txn));
+        StockTransaction saved = txnRepo.save(txn);
+
+        log.info("Transaction recorded: componentId={}, type={}, qty={}, balanceAfter={}",
+                request.getComponentId(), request.getTxnType(), qty, newQty);
+        return toTxnResponse(saved);
     }
 
     public Page<StockTransactionResponse> getAllTransactions(Pageable pageable) {
@@ -200,10 +264,9 @@ public class InventoryService {
         }
     }
 
-    private void recordTransaction(Long componentId, Long locationId, TransactionType type, int qty, String ref, String notes) {
+    private void recordTransaction(Long componentId, TransactionType type, int qty, String ref, String notes) {
         txnRepo.save(StockTransaction.builder()
                 .componentId(componentId)
-                .locationId(locationId)
                 .txnType(type)
                 .quantity(qty)
                 .txnDate(LocalDate.now())
@@ -218,7 +281,7 @@ public class InventoryService {
                 .bloodGroup(b.getBloodGroup()).rhFactor(b.getRhFactor())
                 .componentType(b.getComponentType()).bagNumber(b.getBagNumber())
                 .expiryDate(b.getExpiryDate()).quantity(b.getQuantity())
-                .status(b.getStatus()).locationId(b.getLocationId())
+            .status(b.getStatus())
                 .createdAt(b.getCreatedAt()).updatedAt(b.getUpdatedAt()).build();
     }
 
@@ -232,7 +295,7 @@ public class InventoryService {
     private StockTransactionResponse toTxnResponse(StockTransaction t) {
         return StockTransactionResponse.builder()
                 .txnId(t.getTxnId()).componentId(t.getComponentId())
-                .locationId(t.getLocationId()).txnType(t.getTxnType())
+            .txnType(t.getTxnType())
                 .quantity(t.getQuantity()).txnDate(t.getTxnDate())
                 .referenceId(t.getReferenceId()).notes(t.getNotes())
                 .performedBy(t.getPerformedBy()).createdAt(t.getCreatedAt()).build();

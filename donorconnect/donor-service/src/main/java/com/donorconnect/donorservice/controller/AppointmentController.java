@@ -2,11 +2,15 @@ package com.donorconnect.donorservice.controller;
 
 import com.donorconnect.donorservice.dto.request.AppointmentRequest;
 import com.donorconnect.donorservice.dto.response.ApiResponse;
+
 import com.donorconnect.donorservice.enums.AppointmentStatus;
 import com.donorconnect.donorservice.service.AppointmentService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -73,7 +77,7 @@ public class AppointmentController {
     }
 
     @PatchMapping("/{appointmentId}/cancel")
-    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ROLE_ADMIN','ROLE_DONOR')")
+    @PreAuthorize("hasAnyRole('ROLE_RECEPTION','ROLE_DONOR')")
     @Operation(summary = "Cancel appointment")
     public ResponseEntity<ApiResponse<?>> cancel(@PathVariable Long appointmentId) {
         return ResponseEntity.ok(ApiResponse.success("Appointment cancelled", appointmentService.updateStatus(appointmentId, AppointmentStatus.CANCELLED)));

@@ -3,9 +3,12 @@ package com.donorconnect.donorservice.controller;
 import com.donorconnect.donorservice.dto.request.ScreeningRequest;
 import com.donorconnect.donorservice.dto.response.ApiResponse;
 import com.donorconnect.donorservice.service.ScreeningService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +35,15 @@ public class ScreeningController {
         return ResponseEntity.ok(ApiResponse.success(screeningService.getById(screeningId)));
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN','ROLE_PHLEBOTOMIST')")
+    @Operation(summary = "Get all screening records paginated")
+    public ResponseEntity<ApiResponse<?>> getAll(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(screeningService.getAll(page, size)));
+    }
+
     @GetMapping("/donor/{donorId}")
     @PreAuthorize("hasAnyAuthority('ROLE_RECEPTION','ROLE_ADMIN')")
     @Operation(summary = "All screenings for a donor")
@@ -52,4 +64,3 @@ public class ScreeningController {
         return ResponseEntity.ok(ApiResponse.success("Screening updated", screeningService.update(screeningId, request)));
     }
 }
-

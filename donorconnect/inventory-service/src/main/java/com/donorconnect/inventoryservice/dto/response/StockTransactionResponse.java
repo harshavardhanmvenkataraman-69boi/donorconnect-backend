@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 public class StockTransactionResponse {
     private Long txnId;
     private Long componentId;
-    private Long locationId;
     private TransactionType txnType;
     private Integer quantity;
     private LocalDate txnDate;

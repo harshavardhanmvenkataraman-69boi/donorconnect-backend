@@ -31,6 +31,10 @@ public class BloodComponent {
 
     private LocalDate expiryDate;
 
+    private String bloodGroup;
+
+    private String rhFactor;
+    
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private ComponentStatus status = ComponentStatus.AVAILABLE;

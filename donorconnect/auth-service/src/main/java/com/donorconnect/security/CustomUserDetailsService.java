@@ -1,21 +1,25 @@
 package com.donorconnect.security;
 
 import com.donorconnect.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
-@Service // This allows Spring to automatically find it and "inject" it into your SecurityConfig class
+@Service
 @RequiredArgsConstructor
 
+// this class is the one that provides the data as this is the class that is bridge between your database and security
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    // it goes to your user repo and executes findByEmail, if user doesn't exist throws UernameNotFoundException and if exist returs UserDetails object(which contains hashed password and role)
     @Override
-    // loadUserByUsername -> it hits mysql database via User repo
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
 }
+// password encoder using bcrypt password encoder checks for the hashed password with the one raw password user typed

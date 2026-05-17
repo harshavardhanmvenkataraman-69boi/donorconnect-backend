@@ -1,0 +1,26 @@
+package com.donorconnect.safetyservice.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class ResourceNotFoundException extends RuntimeException {
+
+    private final String resourceName;
+    private final Object resourceId;
+
+    public ResourceNotFoundException(String resourceName, Object resourceId) {
+        super(resourceName + " not found with id: " + resourceId);
+        this.resourceName = resourceName;
+        this.resourceId = resourceId;
+    }
+
+    public ResourceNotFoundException(String resourceName, String fieldName, Object fieldValue) {
+        super(resourceName + " not found with " + fieldName + ": " + fieldValue);
+        this.resourceName = resourceName;
+        this.resourceId = fieldValue;
+    }
+
+    public String getResourceName() { return resourceName; }
+    public Object getResourceId()   { return resourceId; }
+}

@@ -1,20 +1,18 @@
 package com.donorconnect.donorservice.service;
 
 import com.donorconnect.donorservice.dto.request.AppointmentRequest;
-import com.donorconnect.donorservice.entity.DonationAppointment;
-import com.donorconnect.donorservice.entity.Donor;
-import com.donorconnect.donorservice.entity.Drive;
-import com.donorconnect.donorservice.enums.AppointmentStatus;
-import com.donorconnect.donorservice.enums.DeferralStatus;
-import com.donorconnect.donorservice.enums.DonorStatus;
-import com.donorconnect.donorservice.exception.InvalidOperationException;
-import com.donorconnect.donorservice.exception.ResourceNotFoundException;
+import com.donorconnect.donorservice.entity.*;
+import com.donorconnect.donorservice.enums.*;
+import com.donorconnect.donorservice.exception.*;
 import com.donorconnect.donorservice.repository.*;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,6 +26,7 @@ public class AppointmentService {
     private final DriveRepository driveRepository;
     private final ScreeningRecordRepository screeningRecordRepository;
 
+    @SuppressWarnings("null")
     public DonationAppointment book(AppointmentRequest req) {
 
         Donor donor=donorRepository.findById(req.getDonorId())
@@ -53,16 +52,37 @@ public class AppointmentService {
         LocalDateTime startOfDay=req.getDateTime().toLocalDate().atStartOfDay();
         LocalDateTime endOfDay=startOfDay.plusDays(1);
         boolean alreadyBooked= appointmentRepository.existsByDonorIdAndDateTimeBetween(req.getDonorId(),startOfDay,endOfDay);
+        
         if(alreadyBooked){
             throw new InvalidOperationException("Book Appointment","Already booked appointment on the same day.");
         }
+
         if(req.getDriveId()!=null){
             Drive drive=driveRepository.findById(req.getDriveId())
                     .orElseThrow(()-> new ResourceNotFoundException("Drive",req.getDriveId()) );
+            LocalDate appointmentDate = req.getDateTime().toLocalDate();
+            LocalDate driveDate = drive.getScheduledDate();
+
+            if (!appointmentDate.equals(driveDate)) {
+                throw new InvalidOperationException(
+                        "Book Appointment",
+                        "Appointment date must match the drive date: " + driveDate
+                );
+            }
+            if (drive.getCapacity() != null) {
+                long bookedCount = appointmentRepository
+                        .countByDriveIdAndStatusNotIn(
+                                req.getDriveId(),
+                                List.of(AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW)
+                        );
+
+                if (bookedCount >= drive.getCapacity()) {
+                    throw new IllegalStateException(
+                            "Drive is fully booked. Capacity: " + drive.getCapacity()
+                    );
+                }
+            }
         }
-
-
-
 
         DonationAppointment a = DonationAppointment.builder()
                 .donorId(req.getDonorId())

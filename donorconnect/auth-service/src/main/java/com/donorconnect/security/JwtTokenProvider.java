@@ -1,8 +1,10 @@
 package com.donorconnect.security;
 
 import com.donorconnect.entity.auth.User;
+
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,63 +17,62 @@ import java.util.List;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${app.jwt.secret}")
+    @Value("${app.jwt.secret}") // value will be extracted from .properties
     private String jwtSecret;
 
-    @Value("${app.jwt.expiration}")
+    @Value("${app.jwt.expiration}") // value will be extracted from .properties
     private long jwtExpiration;
 
-
-    // hmacShaKeyFor ensures the key is strong enough. If your secret is too short,
-    // Spring will actually throw an error to protect you from weak security
-    // we used key as type because HS256 only works with byte array not with string
-    // for this key must be of 256 bits(32 characters long)
+    // converts your secret string into a secure cryptographic key object which is suitable for HMAC Algo
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
-// hash based message authentication code
 
-
+    // this method is called after successful login. it takes authentication object(all users details) and prepares token metadata
     public String generateToken(Authentication authentication) {
-        String username = authentication.getName();
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + jwtExpiration);
+        String username = authentication.getName(); // get users email
+        Date now = new Date(); // marks the exact time token is created
+        Date expiry = new Date(now.getTime() + jwtExpiration); // calculates when the token should die
 
-        // Collect granted authorities (e.g. ROLE_RECEPTION) into a list of strings
-        List<String> roles = authentication.getAuthorities().stream()
+        List<String> roles = authentication.getAuthorities().stream() // extracts user roles and put them into list of strings
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
-        // Single role string for API-Gateway compatibility
         String primaryRole = roles.isEmpty() ? "" : roles.get(0);
 
-        // Extract userId if principal is our User entity
         String userId = null;
         if (authentication.getPrincipal() instanceof User user) {
             userId = String.valueOf(user.getUserId());
         }
+        // it checks logged in user is an instance of User entity and
+        // grabs their database userId
 
         return Jwts.builder()
-                .setSubject(username)
-                .claim("roles", roles)          // List  – read by donor-service / other microservices
-                .claim("role", primaryRole)     // String – read by API-Gateway JwtUtil
-                .claim("userId", userId)        // String – read by API-Gateway JwtUtil
-                .setIssuedAt(now)
-                .setExpiration(expiry)
+                .setSubject(username) // set email(owner of token)
+                // like for eg if a user has two roles so roles would be the list of both the roles and primaryRole will be the main role
+                .claim("roles", roles)   // puts the role inside token so gateway can read them without asking database
+                .claim("role", primaryRole)     
+                .claim("userId", userId)     // adds database id inside token
+                .setIssuedAt(now) // exact time
+                .setExpiration(expiry) // expiration time
+                // hs256 works only with byte array not with string so for this,
+//                key must be of 256 bits (32 characters long)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                // It signs the data using your secret key. If a hacker changes a single
+                // letter in the token, the signature will no longer match, and the token will be rejected
                 .compact();
+        // Squashes all this data into the final, long "base64" string that you see in Postman
     }
 
-
+    // this is the method that opens the token to see who this token belongs to
     public String getUsernameFromToken(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .setSigningKey(getSigningKey()) // uses the secret to unlock the token
                 .build()
-                .parseClaimsJws(token)// verify jwt token
-                .getBody()
-                .getSubject();
+                .parseClaimsJws(token)// reads the data
+                .getBody() // gets the payload (the claims)
+                .getSubject(); // returns email
     }
-
 
     public boolean validateToken(String token) {
         try {
@@ -79,11 +80,9 @@ public class JwtTokenProvider {
                     .setSigningKey(getSigningKey())
                     .build()
                     .parseClaimsJws(token);
-            return true;
+            return true; // if signature is valid and not expired
         } catch (JwtException | IllegalArgumentException e) {
-            return false;
+            return false; // if token is fake, expired
         }
     }
 }
-// jwts.parserBuilder -> decodes the token
-

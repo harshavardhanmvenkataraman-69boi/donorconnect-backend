@@ -19,18 +19,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * JWT Authentication Filter for donor-service.
- *
- * Flow:
- *  1. Extract Bearer token from the Authorization header.
- *  2. Validate the token signature / expiry with JwtTokenProvider.
- *  3. Read the "roles" claim from the token and build GrantedAuthority list.
- *  4. Set the authentication in the SecurityContext so @PreAuthorize works.
- *
- * NOTE: This service does NOT talk to auth-service per request – it trusts
- *       the JWT signature (same secret) and the claims baked into the token.
- */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {

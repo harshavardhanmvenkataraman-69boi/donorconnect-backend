@@ -4,11 +4,13 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+
 import java.util.List;
 
 @Component
@@ -21,7 +23,6 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    /** Returns the email/username stored in the token subject. */
     public String getUsernameFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
@@ -31,10 +32,6 @@ public class JwtTokenProvider {
                 .getSubject();
     }
 
-    /**
-     * Reads the "roles" claim that auth-service embeds when generating the token.
-     * Falls back gracefully if the claim is absent (older tokens).
-     */
     @SuppressWarnings("unchecked")
     public List<SimpleGrantedAuthority> getAuthorities(String token) {
         Claims claims = Jwts.parserBuilder()
@@ -58,7 +55,6 @@ public class JwtTokenProvider {
         return List.of();
     }
 
-    /** Returns true only when the token signature is valid and it is not expired. */
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()

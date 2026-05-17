@@ -18,14 +18,19 @@ public class AuditLog {
     private Long auditId;
 
     private Long userId;
-    private String action; // records what happened(login)
-    private String resource; // records where happened(auth)
+    private String userName;
+    private String userRole;
+    private String action;
+    private String resource;
 
-    @Builder.Default // without this timestamp will be null
+
+    // If I don't specifically set a value for this field during the build process,
+    // use the default value I provided in the class
+    @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 
     @Column(columnDefinition = "TEXT")
     private String metadata;
-    // You might store JSON here, like: {"oldRole": "USER", "newRole": "ADMIN"}
 }
 
+// .build()	Finalizes the object creation.

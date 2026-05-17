@@ -1,2 +1,5 @@
 package com.donorconnect.transfusionservice.enums;
-public enum CrossmatchPriority { ROUTINE, STAT }
+
+public enum CrossmatchPriority { 
+    ROUTINE, STAT 
+}

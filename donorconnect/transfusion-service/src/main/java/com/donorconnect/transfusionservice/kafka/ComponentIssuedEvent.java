@@ -1,6 +1,11 @@
 package com.donorconnect.transfusionservice.kafka;
+
 import lombok.*;
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+
+@Data 
+@NoArgsConstructor 
+@AllArgsConstructor 
+@Builder
 public class ComponentIssuedEvent {
     private Long componentId;
     private Long patientId;

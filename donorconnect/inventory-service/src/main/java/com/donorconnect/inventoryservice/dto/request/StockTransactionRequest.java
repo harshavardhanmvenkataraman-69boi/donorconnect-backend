@@ -9,10 +9,12 @@ import lombok.*;
 
 import java.time.LocalDate;
 
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data 
+@NoArgsConstructor 
+@AllArgsConstructor 
+@Builder
 public class StockTransactionRequest {
     @NotNull private Long componentId;
-    private Long locationId;
     @NotNull private TransactionType txnType;
     @NotNull @Min(1) private Integer quantity;
     private LocalDate txnDate;

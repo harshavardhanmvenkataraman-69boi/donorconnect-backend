@@ -4,9 +4,12 @@ import com.donorconnect.donorservice.dto.request.DriveRequest;
 import com.donorconnect.donorservice.dto.response.ApiResponse;
 import com.donorconnect.donorservice.enums.DriveStatus;
 import com.donorconnect.donorservice.service.DriveService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -70,5 +73,4 @@ public class DriveController {
     public ResponseEntity<ApiResponse<?>> getAppointments(@PathVariable Long driveId) {
         return ResponseEntity.ok(ApiResponse.success(driveService.getAppointmentsByDrive(driveId)));
     }
-
 }

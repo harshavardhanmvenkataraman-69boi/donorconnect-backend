@@ -1,15 +1,20 @@
 package apiGateway.filter;
 
 import apiGateway.util.JwtUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+
 import org.springframework.stereotype.Component;
 
 
@@ -33,12 +38,22 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
 
-            // Skip CORS preflight OPTIONS requests
+            // if the method used by user is the one in options list then it will,
+            // skip CORS preflight OPTIONS requests
+            // this condition is for frontend to be able to call the backend without
+            // being blocked by CORS policy
             if (request.getMethod() == HttpMethod.OPTIONS) {
                 return chain.filter(exchange);
             }
 
+            // If the validator returns true, the security guard steps aside.
+            // If it returns false, the guard stops the request and looks for that
+            // Authorization: Bearer header.
+
             // Skip filter for open/public endpoints
+            // this condition is for backend to be able to call the auth service for
+            // login and setup without needing a token
+
             if (routeValidator.isOpenEndpoint(request)) {
                 return chain.filter(exchange);
             }
