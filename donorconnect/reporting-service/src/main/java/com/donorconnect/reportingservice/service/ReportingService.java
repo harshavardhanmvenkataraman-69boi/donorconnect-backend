@@ -1,13 +1,10 @@
 package com.donorconnect.reportingservice.service;
 
+import com.donorconnect.reportingservice.client.BloodSupplyClient;
 import com.donorconnect.reportingservice.client.DonorClient;
 import com.donorconnect.reportingservice.client.InventoryClient;
 import com.donorconnect.reportingservice.client.SafetyClient;
-import com.donorconnect.reportingservice.dto.BloodComponentDto;
-import com.donorconnect.reportingservice.dto.DeferralDto;
-import com.donorconnect.reportingservice.dto.DonationDto;
-import com.donorconnect.reportingservice.dto.DonorDto;
-import com.donorconnect.reportingservice.dto.TestResultDto;
+import com.donorconnect.reportingservice.dto.*;
 import com.donorconnect.reportingservice.entity.LabReportPack;
 import com.donorconnect.reportingservice.enums.*;
 import com.donorconnect.reportingservice.exception.ResourceNotFoundException;
@@ -20,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,9 +27,21 @@ public class ReportingService {
     private final InventoryClient inventoryClient;
     private final DonorClient donorClient;
     private final SafetyClient safetyClient;
+    private final BloodSupplyClient bloodSupplyClient;
 
-    // ── Legacy methods (kept for backward compatibility) ──────────────────────
-    /** @deprecated use getAllPacks(Pageable) */
+    // ── unwrap helpers ────────────────────────────────────────────────────────
+    private <T> List<T> unwrapList(ServiceResponse<List<T>> response) {
+        if (response == null || response.getData() == null) return Collections.emptyList();
+        return response.getData();
+    }
+
+    private <T> List<T> unwrapPage(ServiceResponse<PageResponse<T>> response) {
+        if (response == null || response.getData() == null) return Collections.emptyList();
+        List<T> content = response.getData().getContent();
+        return content != null ? content : Collections.emptyList();
+    }
+
+    // ── Legacy methods ────────────────────────────────────────────────────────
     public List<LabReportPack> getAll() { return repo.findAll(); }
     public List<LabReportPack> getByScope(ReportScope scope) { return repo.findByScope(scope); }
     public LabReportPack save(LabReportPack pack) { return repo.save(pack); }
@@ -39,70 +49,96 @@ public class ReportingService {
     // ── Analytics ─────────────────────────────────────────────────────────────
 
     public Map<String, Object> getInventorySnapshot() {
-        List<BloodComponentDto> all = inventoryClient.getAllComponents();
+        List<InventoryBalanceDto> all = unwrapList(inventoryClient.getAllInventory());
         Map<String, Object> result = new LinkedHashMap<>();
-        for (ComponentType type : ComponentType.values()) {
-            long count = all.stream()
-                    .filter(c -> c.getComponentType() == type && c.getStatus() == ComponentStatus.AVAILABLE)
-                    .count();
-            result.put(type.name(), count);
+
+        Map<String, Long> byType = new LinkedHashMap<>();
+        for (InventoryBalanceDto inv : all) {
+            if ("AVAILABLE".equalsIgnoreCase(inv.getStatus())) {
+                String type = inv.getComponentType() != null ? inv.getComponentType() : "UNKNOWN";
+                long qty = inv.getQuantity() != null ? inv.getQuantity() : 0L;
+                byType.merge(type, qty, Long::sum);
+            }
         }
+        result.put("availableByComponentType", byType);
+
+        Map<String, Long> byBloodGroup = new LinkedHashMap<>();
+        for (InventoryBalanceDto inv : all) {
+            if ("AVAILABLE".equalsIgnoreCase(inv.getStatus())) {
+                String bg = (inv.getBloodGroup() != null ? inv.getBloodGroup() : "?")
+                        + (inv.getRhFactor() != null ? inv.getRhFactor() : "");
+                long qty = inv.getQuantity() != null ? inv.getQuantity() : 0L;
+                byBloodGroup.merge(bg, qty, Long::sum);
+            }
+        }
+        result.put("availableByBloodGroup", byBloodGroup);
+        result.put("totalAvailableUnits", all.stream()
+                .filter(i -> "AVAILABLE".equalsIgnoreCase(i.getStatus()))
+                .mapToLong(i -> i.getQuantity() != null ? i.getQuantity() : 0L).sum());
         return result;
     }
 
-    public List<BloodComponentDto> getExpiryRisk() {
+    public List<InventoryBalanceDto> getExpiryRisk() {
         LocalDate now = LocalDate.now();
         LocalDate cutoff = now.plusDays(7);
-        return inventoryClient.getAllComponents().stream()
-                .filter(c -> c.getExpiryDate() != null
-                        && !c.getExpiryDate().isBefore(now)
-                        && !c.getExpiryDate().isAfter(cutoff))
+        return unwrapList(inventoryClient.getAllInventory()).stream()
+                .filter(i -> i.getExpiryDate() != null
+                        && !i.getExpiryDate().isBefore(now)
+                        && !i.getExpiryDate().isAfter(cutoff))
                 .toList();
     }
 
     public Map<String, Long> getDonorActivity() {
-        List<DonorDto> donors = donorClient.getAllDonors();
+        // uses /search with no params → returns plain List
+        List<DonorDto> donors = unwrapList(donorClient.getAllDonors(null, null));
         Map<String, Long> result = new LinkedHashMap<>();
-        result.put("ACTIVE",   donors.stream().filter(d -> d.getStatus() == DonorStatus.ACTIVE).count());
-        result.put("DEFERRED", donors.stream().filter(d -> d.getStatus() == DonorStatus.DEFERRED).count());
-        result.put("INACTIVE", donors.stream().filter(d -> d.getStatus() == DonorStatus.INACTIVE).count());
-        result.put("TOTAL",    (long) donors.size());
+        result.put("ACTIVE",      donors.stream().filter(d -> DonorStatus.ACTIVE.name().equals(sname(d.getStatus()))).count());
+        result.put("DEFERRED",    donors.stream().filter(d -> DonorStatus.DEFERRED.name().equals(sname(d.getStatus()))).count());
+        result.put("INACTIVE",    donors.stream().filter(d -> DonorStatus.INACTIVE.name().equals(sname(d.getStatus()))).count());
+        result.put("BLACKLISTED", donors.stream().filter(d -> DonorStatus.BLACKLISTED.name().equals(sname(d.getStatus()))).count());
+        result.put("TOTAL",       (long) donors.size());
         return result;
     }
 
+    private String sname(DonorStatus s) { return s != null ? s.name() : ""; }
+
     public Map<String, Object> getDonationFrequency() {
-        List<DonationDto> donations = donorClient.getAllDonations();
+        List<DonationDto> donations = unwrapPage(bloodSupplyClient.getAllDonations(0, 10000));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalDonations", donations.size());
         result.put("thisMonth", donations.stream()
-                .filter(d -> d.getCollectionDate() != null &&
-                        d.getCollectionDate().getMonth() == LocalDate.now().getMonth())
+                .filter(d -> d.getCollectionDate() != null
+                        && d.getCollectionDate().getMonth() == LocalDate.now().getMonth()
+                        && d.getCollectionDate().getYear() == LocalDate.now().getYear())
                 .count());
         return result;
     }
 
     public Map<String, Object> getComponentWastage() {
-        List<BloodComponentDto> all = inventoryClient.getAllComponents();
+        List<InventoryBalanceDto> all = unwrapList(inventoryClient.getAllInventory());
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("expired",  all.stream().filter(c -> c.getStatus() == ComponentStatus.EXPIRED).count());
-        result.put("disposed", all.stream().filter(c -> c.getStatus() == ComponentStatus.DISPOSED).count());
+        result.put("expired",     all.stream().filter(i -> "EXPIRED".equalsIgnoreCase(i.getStatus())).count());
+        result.put("disposed",    all.stream().filter(i -> "DISPOSED".equalsIgnoreCase(i.getStatus())).count());
+        result.put("quarantined", all.stream().filter(i ->
+                "QUARANTINED".equalsIgnoreCase(i.getStatus()) || "QUARANTINE".equalsIgnoreCase(i.getStatus())).count());
         return result;
     }
 
     public Map<String, Long> getReactiveCount() {
-        List<TestResultDto> reactives = safetyClient.getAllTestResults().stream()
-                .filter(t -> t.getStatus() == TestStatus.REACTIVE).toList();
+        List<TestResultDto> reactives = unwrapList(bloodSupplyClient.getReactiveTestResults());
         Map<String, Long> result = new LinkedHashMap<>();
         for (TestType type : TestType.values()) {
-            result.put(type.name(), reactives.stream().filter(t -> t.getTestType() == type).count());
+            result.put(type.name(), reactives.stream()
+                    .filter(t -> t.getTestType() != null && t.getTestType() == type)
+                    .count());
         }
         return result;
     }
 
     public Map<String, Object> getDeferralTrends() {
-        List<DeferralDto> deferrals = donorClient.getAllDeferrals();
+        List<DeferralDto> deferrals = unwrapList(donorClient.getActiveDeferrals());
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("totalDeferrals", deferrals.size());
+        result.put("activeDeferrals", deferrals.size());
         result.put("temporary", deferrals.stream().filter(d -> d.getDeferralType() == DeferralType.TEMPORARY).count());
         result.put("permanent", deferrals.stream().filter(d -> d.getDeferralType() == DeferralType.PERMANENT).count());
         return result;
@@ -111,19 +147,37 @@ public class ReportingService {
     public Map<String, String> getTAT() {
         Map<String, String> result = new LinkedHashMap<>();
         result.put("note", "TAT tracking requires analyzer integration (Phase-2)");
-        result.put("totalDonations", String.valueOf(donorClient.getAllDonations().size()));
-        result.put("completedTests", String.valueOf(
-                safetyClient.getAllTestResults().stream().filter(t -> t.getStatus() == TestStatus.COMPLETED).count()));
+        result.put("totalDonations", String.valueOf(unwrapPage(bloodSupplyClient.getAllDonations(0, 10000)).size()));
+        result.put("pendingTests",   String.valueOf(unwrapList(bloodSupplyClient.getPendingTestResults()).size()));
+        result.put("reactiveTests",  String.valueOf(unwrapList(bloodSupplyClient.getReactiveTestResults()).size()));
         return result;
     }
 
     public Map<String, Object> getUtilization() {
-        List<BloodComponentDto> all = inventoryClient.getAllComponents();
+        List<InventoryBalanceDto> all = unwrapList(inventoryClient.getAllInventory());
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("available",  all.stream().filter(c -> c.getStatus() == ComponentStatus.AVAILABLE).count());
-        result.put("issued",     all.stream().filter(c -> c.getStatus() == ComponentStatus.ISSUED).count());
-        result.put("expired",    all.stream().filter(c -> c.getStatus() == ComponentStatus.EXPIRED).count());
-        result.put("quarantine", all.stream().filter(c -> c.getStatus() == ComponentStatus.QUARANTINE).count());
+        result.put("available",  all.stream().filter(i -> "AVAILABLE".equalsIgnoreCase(i.getStatus())).count());
+        result.put("issued",     all.stream().filter(i -> "ISSUED".equalsIgnoreCase(i.getStatus())).count());
+        result.put("reserved",   all.stream().filter(i -> "RESERVED".equalsIgnoreCase(i.getStatus())).count());
+        result.put("expired",    all.stream().filter(i -> "EXPIRED".equalsIgnoreCase(i.getStatus())).count());
+        result.put("quarantine", all.stream().filter(i ->
+                "QUARANTINED".equalsIgnoreCase(i.getStatus()) || "QUARANTINE".equalsIgnoreCase(i.getStatus())).count());
+        result.put("disposed",   all.stream().filter(i -> "DISPOSED".equalsIgnoreCase(i.getStatus())).count());
+        return result;
+    }
+
+    public Map<String, Object> getAdverseReactionSummary() {
+        List<ReactionDto> reactions = unwrapList(safetyClient.getAllReactions(0, 10000));
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total", reactions.size());
+        result.put("bySeverity", reactions.stream()
+                .collect(Collectors.groupingBy(
+                        r -> r.getSeverity() != null ? r.getSeverity() : "UNKNOWN",
+                        Collectors.counting())));
+        result.put("byStatus", reactions.stream()
+                .collect(Collectors.groupingBy(
+                        r -> r.getStatus() != null ? r.getStatus() : "UNKNOWN",
+                        Collectors.counting())));
         return result;
     }
 
@@ -132,6 +186,8 @@ public class ReportingService {
         metrics.put("inventorySnapshot", getInventorySnapshot());
         metrics.put("donorActivity", getDonorActivity());
         metrics.put("wastage", getComponentWastage());
+        metrics.put("utilization", getUtilization());
+        metrics.put("deferralTrends", getDeferralTrends());
         LabReportPack pack = LabReportPack.builder()
                 .scope(scope)
                 .metricsJson(metrics.toString())
