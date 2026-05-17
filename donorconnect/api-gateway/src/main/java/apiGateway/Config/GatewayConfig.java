@@ -96,9 +96,9 @@ public class GatewayConfig {
 
                 // billing-service routes        
                 .route("billing-service", r -> r
-                        .path("/api/billing/**")
+                        .path("/api/billing", "/api/billing/**")
                         .filters(f -> f.filter(jwtAuthenticationFilter.apply(new JwtAuthenticationFilter.Config()))
-                                .rewritePath("/api/billing/(?<segment>.*)", "/api/v1/billing/${segment}"))
+                                .rewritePath("^/api/billing", "/api/v1/billing"))
                         .uri("lb://billing-service"))
 
                 // reporting-service routes        
